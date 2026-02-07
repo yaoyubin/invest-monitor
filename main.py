@@ -4,13 +4,11 @@ import time
 import os
 import json
 import datetime
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 from bilibili_api import user
 from googleapiclient.discovery import build
 from up_list import TARGET_UIDS, UP_LIST, KEYWORDS, NO_FILTER_UIDS, UP_NAME_MAP, YOUTUBE_CHANNELS, YOUTUBE_NO_FILTER_CHANNELS
+from tools.email_sender import send_gmail
 
 # 加载 .env 文件中的环境变量
 load_dotenv()
@@ -254,65 +252,9 @@ async def filter_content(video_data, time_config, up_uid=None, platform='bilibil
     return True
 
 async def send_notification(content, title_prefix):
-    """使用Gmail SMTP发送邮件通知"""
-    sender_email = os.environ.get("GMAIL_SENDER")
-    app_password = os.environ.get("GMAIL_APP_PASSWORD")
-    recipient_email = os.environ.get("GMAIL_RECIPIENT")
-    
-    if not sender_email or not app_password or not recipient_email:
-        print("❌ Gmail配置未设置（需要：GMAIL_SENDER, GMAIL_APP_PASSWORD, GMAIL_RECIPIENT）")
-        return False
-    
-    # 构建HTML格式的邮件内容
-    html_content = f"""
-    <html>
-    <head>
-        <meta charset="utf-8">
-    </head>
-    <body>
-        <h3>{title_prefix}</h3>
-        {content}
-    </body>
-    </html>
-    """
-    
-    # 创建邮件消息
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = title_prefix
-    msg['From'] = sender_email
-    msg['To'] = recipient_email
-    
-    # 添加HTML内容
-    html_part = MIMEText(html_content, 'html', 'utf-8')
-    msg.attach(html_part)
-    
-    # 使用asyncio.to_thread包装同步SMTP调用
-    def send_email_sync():
-        """同步发送邮件函数"""
-        try:
-            with smtplib.SMTP('smtp.gmail.com', 587) as server:
-                server.starttls()
-                server.login(sender_email, app_password)
-                server.send_message(msg)
-            return True, None
-        except Exception as e:
-            return False, str(e)
-    
-    try:
-        success, error_msg = await asyncio.to_thread(send_email_sync)
-        if success:
-            print(f"✅ 邮件发送成功")
-            return True
-        else:
-            print(f"❌ 邮件发送失败: {error_msg}")
-            import traceback
-            traceback.print_exc()
-            return False
-    except Exception as e:
-        print(f"❌ 邮件发送异常: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return False
+    """使用 Gmail 发送邮件通知（复用 tools.email_sender）"""
+    html_inner = f"<h3>{title_prefix}</h3>\n{content}"
+    return await send_gmail(html_inner, title_prefix)
 
 async def main():
     # 1. 获取今日策略 (周报 vs 日报)

@@ -197,14 +197,24 @@ python test_local.py
 
 ```
 .
-├── main.py                    # 主程序
+├── main.py                    # UGC 监控主程序
+├── invest_daily.py           # 投资日报入口
+├── invest_config.py           # 投资日报配置（持仓、关注股票）
+├── invest/                    # 投资日报模块
+│   ├── dedup.py               # 7 天去重
+│   ├── news.py                # 持仓新闻 + 财报新闻抓取
+│   └── report.py              # 日报 HTML 组装
+├── tools/
+│   ├── email_sender.py        # Gmail 发送（UGC + 投资日报共用）
+│   └── search_engine.py       # DuckDuckGo 搜索
 ├── test_local.py              # 本地测试脚本
-├── history.json               # 已处理视频记录（自动生成）
+├── history.json               # UGC 已处理视频记录（自动生成）
+├── invest_history.json        # 投资日报 7 天去重记录（自动生成）
 ├── up_list.py                 # UP主列表配置
 ├── requirements.txt           # Python依赖
-├── .github/
-│   └── workflows/
-│       └── daily.yml          # GitHub Actions配置
+├── .github/workflows/
+│   ├── daily.yml              # UGC 每日抓取
+│   └── invest_daily.yml       # 投资日报每日发送
 └── README.md                  # 本文件
 ```
 
@@ -221,6 +231,28 @@ python test_local.py
 - 首次运行会创建 `history.json` 文件
 - GitHub Actions 会自动提交更新后的 `history.json`
 - 7天前的记录会自动清理
+
+## 投资日报（MVP）
+
+每日抓取**持仓相关新闻**与**上市公司财报**新闻，7 天去重后发一封 Gmail。
+
+### 配置
+
+1. 编辑 `invest_config.py`：
+   - **HOLDINGS**：持仓列表，每项 `symbol`、`market`（`cn`/`us`/`crypto`）、可选 `name`
+   - **EARNINGS_WATCH**：用于财报搜索的股票；填 `None` 表示使用持仓中的股票部分
+
+2. Gmail 与 UGC 监控共用同一套 Secrets（`GMAIL_SENDER`、`GMAIL_APP_PASSWORD`、`GMAIL_RECIPIENT`）
+
+### 运行方式
+
+- **GitHub Actions**：`.github/workflows/invest_daily.yml` 每天 UTC 0:00（北京时间 8:00）运行，也可在 Actions 页手动触发
+- **本地**：`python invest_daily.py`（需在项目根目录，且已配置 `.env` 中的 Gmail）
+
+### 说明
+
+- 去重记录保存在 `invest_history.json`，workflow 会像 `history.json` 一样自动提交
+- 后续可扩展：财报日历、财报解读、IPO 雷达、指标阈值告警等
 
 ## 未来扩展
 
