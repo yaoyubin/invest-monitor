@@ -1,0 +1,45 @@
+# 投资日报：每日定时抓取持仓新闻 + 财报，去重后发 Gmail
+name: 投资日报
+
+on:
+  schedule:
+    # 北京时间 8:00 = UTC 0:00
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run_invest_daily:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 运行投资日报
+        env:
+          GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_RECIPIENT: ${{ secrets.GMAIL_RECIPIENT }}
+        run: python invest_daily.py
+
+      - name: 保存去重记录 (Commit & Push)
+        run: |
+          git config --global user.name 'GitHub Actions Bot'
+          git config --global user.email 'actions@github.com'
+          if [ -f invest_history.json ]; then
+            git add invest_history.json
+            if ! git diff --cached --quiet; then
+              git commit -m "invest: update history [skip ci]"
+              git push
+            fi
+          fi
