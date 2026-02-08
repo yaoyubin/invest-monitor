@@ -10,9 +10,14 @@ HOLDINGS = [
     # {"symbol": "600519", "market": "cn", "name": "贵州茅台"},
     # 美股示例
     # {"symbol": "AAPL", "market": "us", "name": "Apple"},
-    {"symbol": "TSM", "market": "us", "name": "台積電"},
+    {"symbol": "TCEHY", "market": "us", "name": "Tencent"},
+    {"symbol": "MPNGY", "market": "us", "name": "MeiTuan"},
+    {"symbol": "BILI", "market": "us", "name": "Bilibili"},
+    {"symbol": "TSLA", "market": "us", "name": "Tesla"},
+    {"symbol": "AMD", "market": "us", "name": "AMD"},
+    {"symbol": "TSM", "market": "us", "name": "TSMC"},
     # 加密货币示例
-    {"symbol": "BTC", "market": "crypto", "name": "比特币"},
+    {"symbol": "BTC", "market": "crypto", "name": "Bitcoin"},
 ]
 
 # 关注股票（用于财报搜索）。若与持仓一致，填 None 表示自动使用持仓中的股票部分
