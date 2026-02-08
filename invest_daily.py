@@ -18,6 +18,7 @@ from invest_config import get_earnings_stocks, get_holdings, get_seeking_alpha_t
 from invest.dedup import InvestHistoryManager
 from invest.earnings_forward import get_earnings_forward
 from invest.form4 import fetch_form4
+from invest.haoetf import get_ndq_etf_premiums
 from invest.report import build_html
 from invest.sa_rss import fetch_seeking_alpha
 from tools.email_sender import send_gmail
@@ -60,6 +61,13 @@ def main():
         for item in form4_list:
             history.mark_reported(item["id"])
 
+    # 纳斯达克 ETF 溢价率（159632、513300）：仅当溢价 < 3.1% 或 > 7.5% 时提醒
+    ndq_etf_premiums = []
+    print("获取纳斯达克ETF溢价...")
+    ndq_etf_premiums = get_ndq_etf_premiums()
+    if ndq_etf_premiums:
+        print("纳斯达克ETF溢价提醒：" + "；".join(p["code"] + " " + p["premium_str"] for p in ndq_etf_premiums))
+
     # 标的顺序与展示名：财报顺序优先，再补 SA 独有；展示名来自财报列表与持仓
     earnings_symbols = [h["symbol"] for h in earnings_stocks]
     sa_only = [t for t in sa_tickers if t not in set(earnings_symbols)]
@@ -74,6 +82,7 @@ def main():
         sa_news=sa_news,
         sa_analysis=sa_analysis,
         form4_list=form4_list,
+        ndq_etf_premiums=ndq_etf_premiums,
         symbol_order=symbol_order,
         symbol_to_name=symbol_to_name,
     )

@@ -4,11 +4,12 @@
 import datetime
 
 
-def build_html(earnings_forward, sa_news=None, sa_analysis=None, form4_list=None, symbol_order=None, symbol_to_name=None):
+def build_html(earnings_forward, sa_news=None, sa_analysis=None, form4_list=None, ndq_etf_premiums=None, symbol_order=None, symbol_to_name=None):
     """
     earnings_forward: list of {symbol, earnings_date}，仅包含下次财报在未来两周内的股票
     sa_news / sa_analysis: 每项含 {url, title, snippet, source, symbol}
     form4_list: 高管买卖，每项含 {id, symbol, url, title, filing_date}
+    ndq_etf_premiums: 需提醒的纳斯达克ETF溢价 list of {code, premium_str, url, valuation_date}
     symbol_order: 希望出现的股票顺序（list of str）；None 则按数据中出现的 symbol 字母序
     symbol_to_name: {symbol: "展示名"}；缺省用 symbol
     仅展示当日至少有一条内容（财报前瞻/高管买卖/SA News/SA Analysis）的股票。
@@ -17,6 +18,7 @@ def build_html(earnings_forward, sa_news=None, sa_analysis=None, form4_list=None
     sa_news = sa_news or []
     sa_analysis = sa_analysis or []
     form4_list = form4_list or []
+    ndq_etf_premiums = ndq_etf_premiums or []
     symbol_to_name = symbol_to_name or {}
 
     def _collect_symbols_from_items(items):
@@ -37,6 +39,16 @@ def build_html(earnings_forward, sa_news=None, sa_analysis=None, form4_list=None
     if not all_symbols:
         parts = [_title_block()]
         parts.append("<p>今日无财报前瞻、高管买卖、Seeking Alpha 新闻或分析（或均在 7 天内报过）。</p>")
+        if ndq_etf_premiums:
+            parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
+            parts.append("<p><b>纳斯达克ETF溢价率</b></p>")
+            parts.append("<ul style='list-style:none; padding-left:0'>")
+            for p in ndq_etf_premiums:
+                date_str = f"（估值日期 {_escape(p.get('valuation_date', ''))}）" if p.get("valuation_date") else ""
+                line = f"纳斯达克ETF({_escape(p['code'])}) 最新溢价 {_escape(p.get('premium_str', ''))}{date_str} "
+                line += f"<a href='{_escape(p['url'])}'>详情</a>"
+                parts.append(f"<li style='margin-bottom:8px'>{line}</li>")
+            parts.append("</ul>")
         return "\n".join(parts)
 
     if symbol_order:
@@ -103,6 +115,18 @@ def build_html(earnings_forward, sa_news=None, sa_analysis=None, form4_list=None
 
         if i < len(symbol_list) - 1:
             parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
+
+    # 纳斯达克ETF溢价率（仅当有需提醒的 ETF 时展示）
+    if ndq_etf_premiums:
+        parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
+        parts.append("<p><b>纳斯达克ETF溢价率</b></p>")
+        parts.append("<ul style='list-style:none; padding-left:0'>")
+        for p in ndq_etf_premiums:
+            date_str = f"（估值日期 {_escape(p.get('valuation_date', ''))}）" if p.get("valuation_date") else ""
+            line = f"纳斯达克ETF({_escape(p['code'])}) 最新溢价 {_escape(p.get('premium_str', ''))}{date_str} "
+            line += f"<a href='{_escape(p['url'])}'>详情</a>"
+            parts.append(f"<li style='margin-bottom:8px'>{line}</li>")
+        parts.append("</ul>")
 
     return "\n".join(parts)
 
