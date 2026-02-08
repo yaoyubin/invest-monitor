@@ -1,11 +1,10 @@
 # 投资日报
 
-每日抓取**持仓相关新闻**与**上市公司财报**新闻，7 天去重后通过 Gmail 发送一封 HTML 日报。
+按股票分组的**投资日报**：财报前瞻（yfinance）+ Seeking Alpha News/Analysis，7 天去重后通过 Gmail 发送 HTML 邮件。
 
 ## 功能特性
 
-- **持仓新闻**：按 `invest_config.py` 中的持仓列表（A 股/美股/加密货币）抓取相关新闻（RSS/搜索）
-- **财报新闻**：按关注股票抓取财报相关新闻
+- **财报前瞻**：用 yfinance 获取美股下次财报日期，若在未来两周内则在日报中提示
 - **Seeking Alpha**：按美股标的抓取 News（标题 + 列表页链接）与 Analysis（标题 + 文章链接），7 天去重
 - **7 天去重**：同一链接 7 天内不重复推送，记录保存在 `invest_history.json`
 - **Gmail 推送**：HTML 邮件，支持 GitHub Actions 自动运行并提交去重记录
@@ -33,14 +32,14 @@
 编辑 `invest_config.py`：
 
 ```python
-# 持仓列表：用于「持仓新闻」搜索
+# 持仓列表（用于财报前瞻/Seeking Alpha 的标的与展示名）
 HOLDINGS = [
     {"symbol": "TSM", "market": "us", "name": "台積電"},
     {"symbol": "BTC", "market": "crypto", "name": "比特币"},
     # market: cn / us / crypto
 ]
 
-# 财报关注：None 表示用持仓中的股票（cn/us）做财报搜索
+# 财报关注：None 表示用持仓中的股票（cn/us）；财报前瞻仅对美股用 yfinance 查下次财报日
 EARNINGS_WATCH = None
 
 # Seeking Alpha：None 表示用持仓中的美股；也可单独列如 ["TSM", "AAPL"]
@@ -55,7 +54,7 @@ SEEKING_ALPHA_TICKERS = None
    GMAIL_APP_PASSWORD=your_16_digit_app_password
    GMAIL_RECIPIENT=recipient@example.com
    ```
-2. 安装依赖（含 `feedparser`、`ddgs`、`python-dotenv`）后运行：
+2. 安装依赖（含 `feedparser`、`yfinance`、`python-dotenv`）后运行：
    ```bash
    pip install -r requirements.txt
    python invest_daily.py
@@ -71,16 +70,15 @@ SEEKING_ALPHA_TICKERS = None
 
 ```
 .
-├── invest_daily.py       # 入口：拉配置 → 抓新闻 → 去重 → 组报 → 发邮件
+├── invest_daily.py       # 入口：财报前瞻 + Seeking Alpha → 去重 → 组报 → 发邮件
 ├── invest_config.py     # 持仓、财报关注配置
 ├── invest/
 │   ├── dedup.py         # 7 天去重（invest_history.json）
-│   ├── news.py          # 持仓新闻 + 财报新闻抓取
-│   ├── report.py        # 日报 HTML 组装
+│   ├── earnings_forward.py  # 财报前瞻（yfinance 下次财报日，两周内提示）
+│   ├── report.py        # 日报 HTML 组装（按股票分组）
 │   └── sa_rss.py        # Seeking Alpha RSS（News + Analysis）
 ├── tools/
-│   ├── email_sender.py  # Gmail 发送
-│   └── search_engine.py # 搜索（DuckDuckGo 等）
+│   └── email_sender.py  # Gmail 发送
 ├── invest_history.json  # 7 天去重记录（自动生成/提交）
 ├── .github/workflows/
 │   └── invest_daily.yml # 投资日报定时任务

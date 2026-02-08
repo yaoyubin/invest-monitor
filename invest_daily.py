@@ -1,5 +1,5 @@
 """
-投资日报 MVP 入口：拉配置 → 抓财报新闻 + Seeking Alpha → 7 天去重 → 组报 → 发 Gmail
+投资日报 MVP 入口：财报前瞻（yfinance）+ Seeking Alpha → 7 天去重 → 组报 → 发 Gmail
 """
 import asyncio
 import datetime
@@ -16,7 +16,7 @@ load_dotenv(os.path.join(_project_root, ".env"))
 
 from invest_config import get_earnings_stocks, get_holdings, get_seeking_alpha_tickers
 from invest.dedup import InvestHistoryManager
-from invest.news import fetch_earnings_news
+from invest.earnings_forward import get_earnings_forward
 from invest.report import build_html
 from invest.sa_rss import fetch_seeking_alpha
 from tools.email_sender import send_gmail
@@ -32,11 +32,14 @@ def main():
 
     history = InvestHistoryManager()
 
-    # 财报新闻（仅当有关注股票时）
-    earnings_news = []
-    if earnings_stocks:
-        print("抓取财报相关新闻...")
-        earnings_news = fetch_earnings_news(earnings_stocks, history, max_results_per=8, delay_sec=1)
+    # 财报前瞻：美股下次财报在未来两周内的提示（yfinance）
+    us_symbols = list(dict.fromkeys(
+        [h["symbol"] for h in earnings_stocks if h["market"] == "us"] + list(sa_tickers)
+    ))
+    earnings_forward = []
+    if us_symbols:
+        print("获取财报前瞻...")
+        earnings_forward = get_earnings_forward(us_symbols, within_days=14)
 
     # Seeking Alpha（仅当有美股标的时）
     sa_news, sa_analysis = [], []
@@ -45,8 +48,6 @@ def main():
         sa_news, sa_analysis = fetch_seeking_alpha(history, sa_tickers, max_per_feed=20, delay_sec=1)
 
     # 标记本次报过的 id，避免 7 天内重复
-    for n in earnings_news:
-        history.mark_reported(n["id"])
     for n in sa_news + sa_analysis:
         history.mark_reported(n["id"])
 
@@ -60,7 +61,7 @@ def main():
 
     # 组装日报并发送（按股票分组，仅展示当日有内容的股票）
     html = build_html(
-        earnings_news,
+        earnings_forward,
         sa_news=sa_news,
         sa_analysis=sa_analysis,
         symbol_order=symbol_order,
@@ -71,7 +72,7 @@ def main():
 
     success = asyncio.run(send_gmail(html, subject))
     if success:
-        print(f"投资日报已发送：财报 {len(earnings_news)} 条，SA News {len(sa_news)} 条，SA Analysis {len(sa_analysis)} 条")
+        print(f"投资日报已发送：财报前瞻 {len(earnings_forward)} 只，SA News {len(sa_news)} 条，SA Analysis {len(sa_analysis)} 条")
     else:
         print("投资日报发送失败，请检查 Gmail 配置。")
 

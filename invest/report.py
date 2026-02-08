@@ -1,23 +1,23 @@
 """
-日报组装：按股票分组，每股票下为「财报动态」「Seeking Alpha · News」「Seeking Alpha · Analysis」
+日报组装：按股票分组，每股票下为「财报前瞻」「Seeking Alpha · News」「Seeking Alpha · Analysis」
 """
 import datetime
 
 
-def build_html(earnings_news, sa_news=None, sa_analysis=None, symbol_order=None, symbol_to_name=None):
+def build_html(earnings_forward, sa_news=None, sa_analysis=None, symbol_order=None, symbol_to_name=None):
     """
-    earnings_news: list of {url, title, snippet, source, symbol}
+    earnings_forward: list of {symbol, earnings_date}，仅包含下次财报在未来两周内的股票
     sa_news / sa_analysis: 每项含 {url, title, snippet, source, symbol}
     symbol_order: 希望出现的股票顺序（list of str）；None 则按数据中出现的 symbol 字母序
     symbol_to_name: {symbol: "展示名"}；缺省用 symbol
-    仅展示当日至少有一条内容（财报/SA News/SA Analysis）的股票。
+    仅展示当日至少有一条内容（财报前瞻/SA News/SA Analysis）的股票。
     返回完整 HTML 片段（不含 html/body 外层，由 email_sender 包）
     """
     sa_news = sa_news or []
     sa_analysis = sa_analysis or []
     symbol_to_name = symbol_to_name or {}
 
-    def _collect_symbols(items):
+    def _collect_symbols_from_items(items):
         out = set()
         for n in items:
             s = n.get("symbol")
@@ -25,10 +25,11 @@ def build_html(earnings_news, sa_news=None, sa_analysis=None, symbol_order=None,
                 out.add(s)
         return out
 
-    all_symbols = _collect_symbols(earnings_news) | _collect_symbols(sa_news) | _collect_symbols(sa_analysis)
+    forward_symbols = {n["symbol"] for n in (earnings_forward or [])}
+    all_symbols = forward_symbols | _collect_symbols_from_items(sa_news) | _collect_symbols_from_items(sa_analysis)
     if not all_symbols:
         parts = [_title_block()]
-        parts.append("<p>今日无新增财报、Seeking Alpha 新闻或分析（或均在 7 天内报过）。</p>")
+        parts.append("<p>今日无财报前瞻、Seeking Alpha 新闻或分析（或 SA 均在 7 天内报过）。</p>")
         return "\n".join(parts)
 
     if symbol_order:
@@ -38,25 +39,21 @@ def build_html(earnings_news, sa_news=None, sa_analysis=None, symbol_order=None,
     else:
         symbol_list = sorted(all_symbols)
 
+    forward_by_symbol = {n["symbol"]: n["earnings_date"] for n in (earnings_forward or [])}
     parts = [_title_block()]
 
     for i, symbol in enumerate(symbol_list):
         display_name = symbol_to_name.get(symbol, symbol)
-        e_list = [n for n in earnings_news if n.get("symbol") == symbol]
+        earnings_date_str = forward_by_symbol.get(symbol)
         news_list = [n for n in sa_news if n.get("symbol") == symbol]
         analysis_list = [n for n in sa_analysis if n.get("symbol") == symbol]
 
         parts.append(f"<h3>{_escape(display_name)} ({_escape(symbol)})</h3>")
 
-        # 财报动态
-        parts.append("<p><b>财报动态</b></p>")
-        if e_list:
-            parts.append("<ul style='list-style:none; padding-left:0'>")
-            for n in e_list:
-                link = f"<a href='{_escape(n['url'])}'>{_escape(n['title'])}</a>"
-                snip = _escape((n.get("snippet") or "")[:200])
-                parts.append(f"<li style='margin-bottom:10px'>{link}<br/><small style='color:#666'>{snip}</small></li>")
-            parts.append("</ul>")
+        # 财报前瞻
+        parts.append("<p><b>财报前瞻</b></p>")
+        if earnings_date_str:
+            parts.append(f"<p>下次财报：{_escape(earnings_date_str)}（未来两周内）</p>")
         else:
             parts.append("<p style='color:#888'>无</p>")
 
