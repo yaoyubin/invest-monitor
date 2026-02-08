@@ -7,10 +7,12 @@ import sys
 import os
 
 # 确保项目根在 path 中
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+_project_root = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _project_root)
 
 from dotenv import load_dotenv
-load_dotenv()
+# 显式从项目根加载 .env，避免因工作目录不同而读不到
+load_dotenv(os.path.join(_project_root, ".env"))
 
 from invest_config import get_holdings, get_earnings_stocks
 from invest.dedup import InvestHistoryManager

@@ -3,7 +3,11 @@
 import argparse
 import sys
 import time
-from duckduckgo_search import DDGS
+
+try:
+    from ddgs import DDGS
+except ImportError:
+    from duckduckgo_search import DDGS  # legacy; prefer: pip install ddgs
 
 def search_with_retry(query, max_results=10, max_retries=3):
     """
