@@ -17,6 +17,7 @@ load_dotenv(os.path.join(_project_root, ".env"))
 from invest_config import get_earnings_stocks, get_holdings, get_seeking_alpha_tickers
 from invest.dedup import InvestHistoryManager
 from invest.earnings_forward import get_earnings_forward
+from invest.form4 import fetch_form4
 from invest.report import build_html
 from invest.sa_rss import fetch_seeking_alpha
 from tools.email_sender import send_gmail
@@ -51,6 +52,14 @@ def main():
     for n in sa_news + sa_analysis:
         history.mark_reported(n["id"])
 
+    # 高管买卖（Finnhub，仅当有美股标的且配置了 FINNHUB_API_KEY）
+    form4_list = []
+    if us_symbols:
+        print("获取高管买卖...")
+        form4_list = fetch_form4(us_symbols, history, within_days=15, max_per_symbol=10)
+        for item in form4_list:
+            history.mark_reported(item["id"])
+
     # 标的顺序与展示名：财报顺序优先，再补 SA 独有；展示名来自财报列表与持仓
     earnings_symbols = [h["symbol"] for h in earnings_stocks]
     sa_only = [t for t in sa_tickers if t not in set(earnings_symbols)]
@@ -64,6 +73,7 @@ def main():
         earnings_forward,
         sa_news=sa_news,
         sa_analysis=sa_analysis,
+        form4_list=form4_list,
         symbol_order=symbol_order,
         symbol_to_name=symbol_to_name,
     )
@@ -72,7 +82,7 @@ def main():
 
     success = asyncio.run(send_gmail(html, subject))
     if success:
-        print(f"投资日报已发送：财报前瞻 {len(earnings_forward)} 只，SA News {len(sa_news)} 条，SA Analysis {len(sa_analysis)} 条")
+        print(f"投资日报已发送：财报前瞻 {len(earnings_forward)} 只，SA News {len(sa_news)} 条，SA Analysis {len(sa_analysis)} 条，高管买卖 {len(form4_list)} 条")
     else:
         print("投资日报发送失败，请检查 Gmail 配置。")
 
