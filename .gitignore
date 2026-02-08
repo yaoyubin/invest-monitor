@@ -21,10 +21,12 @@ ENV/
 Thumbs.db
 
 # 项目特定
-# history.json 需要被提交，所以不忽略
-# .env 文件包含敏感信息，应该忽略
+# .env 包含敏感信息，不提交
 .env
 .env.local
+# 旧 UGC 监控的 history.json（已废弃），不提交
+history.json
+# invest_history.json 不忽略，由 Actions 提交
 
 # 临时文件
 *.log

@@ -108,39 +108,16 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 
 # Scratchpad
 
-## 当前任务：B站UP主视频监控系统
+## 当前任务：投资日报
 
 ### 任务说明
-实现一个B站UP主和YouTube频道视频监控系统，自动检测并推送AIGC相关新视频
-- 核心功能：
-  - 并发获取多个B站UP主和YouTube频道的最新视频列表
-  - 两段式过滤：关键词硬过滤 + 预留LLM语义判断
-  - 使用 history.json 记录已处理视频，避免重复推送（支持B站bvid和YouTube video_id）
-  - 14天自动过期清理机制
-  - 通过 Gmail 邮件发送推送通知（合并B站和YouTube的更新到同一封邮件）
-  - 支持日报/周报模式：周六执行周报模式（抓取过去7天），其他6天执行日报模式（抓取过去26小时）
-- GitHub Actions 集成：
-  - 每天自动运行（美国西部时间下午5点，UTC 01:00）
-  - 自动提交更新后的 history.json 到仓库，实现持久化存储
-
-### 架构设计
-- **Memory (记忆层)**: HistoryManager 类，负责读写 history.json，去重和过期清理（支持B站bvid和YouTube video_id）
-- **Fetcher (数据源)**: fetch_videos_from_up 和 fetch_youtube_videos 函数，并发获取B站UP主和YouTube频道视频列表
-- **Filter (过滤器)**: filter_content 函数，关键词过滤 + 预留LLM语义判断（支持B站和YouTube两种平台）
-- **Notifier (通知器)**: send_notification 函数，通过Gmail SMTP发送邮件通知（合并B站和YouTube的更新到同一封邮件）
+投资日报 MVP：持仓新闻 + 财报新闻抓取，7 天去重，Gmail HTML 推送
+- 核心：invest_daily.py 拉配置 → invest.news 抓取 → invest.dedup 去重 → invest.report 组 HTML → tools.email_sender 发邮件
+- 配置：invest_config.py（HOLDINGS、EARNINGS_WATCH）
+- 去重：invest_history.json，由 GitHub Actions 自动提交
 
 ### 进度
-[X] 实现 main.py 核心功能（HistoryManager、并发获取、过滤、通知）
-[X] 创建 GitHub Actions workflow 配置文件
-[X] 配置自动提交 history.json 机制
-[X] 初始化Git仓库并提交所有文件
-[X] 创建README和GitHub配置指南
-[X] 连接GitHub仓库并推送代码
-[X] 添加 .env 文件支持（支持通过 .env 文件配置环境变量）
-[X] 支持 YouTube 频道监控
-[X] 实现日报/周报模式（周六周报，其他6天日报）
-[X] 修改运行时间为美国西部时间下午5点
-[ ] 配置GitHub Secrets (GMAIL_SENDER, GMAIL_APP_PASSWORD, GMAIL_RECIPIENT, YOUTUBE_API_KEY)
-[ ] 测试本地运行
-[ ] 测试 GitHub Actions 运行
-[ ] (未来) 接入LLM API实现语义判断
+[X] 投资日报入口与配置
+[X] 持仓/财报新闻抓取与 7 天去重
+[X] Gmail 发送与 invest_daily workflow
+[ ] 后续：财报日历、Form 4、指标阈值、IPO 雷达等

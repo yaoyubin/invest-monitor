@@ -1,266 +1,92 @@
-# B站UP主和YouTube频道视频监控系统
+# 投资日报
 
-自动监控B站UP主和YouTube频道的新视频，检测AIGC相关内容并推送通知。
+每日抓取**持仓相关新闻**与**上市公司财报**新闻，7 天去重后通过 Gmail 发送一封 HTML 日报。
 
 ## 功能特性
 
-- 🔍 **并发监控**：同时监控多个B站UP主和YouTube频道，智能控制并发数
-- 🎯 **智能过滤**：关键词硬过滤 + 预留LLM语义判断
-- 💾 **持久化记忆**：使用 `history.json` 记录已处理视频，避免重复推送
-- 🧹 **自动清理**：7天前的记录自动过期删除
-- 📧 **推送通知**：通过Gmail邮件发送通知（合并B站和YouTube的更新到同一封邮件）
-- 🤖 **自动化运行**：GitHub Actions 每天自动运行
+- **持仓新闻**：按 `invest_config.py` 中的持仓列表（A 股/美股/加密货币）抓取相关新闻（RSS/搜索）
+- **财报新闻**：按关注股票抓取财报相关新闻
+- **7 天去重**：同一链接 7 天内不重复推送，记录保存在 `invest_history.json`
+- **Gmail 推送**：HTML 邮件，支持 GitHub Actions 自动运行并提交去重记录
 
 ## 快速开始
 
-### 1. 配置 GitHub Secrets
+### 1. 配置 Gmail
 
-在 GitHub 仓库中配置 Gmail 邮件通知：
+#### 获取 Gmail 应用专用密码
 
-#### 步骤 1.1：获取 Gmail 应用专用密码
+1. 登录 [Google 账户](https://myaccount.google.com/security)，确保已启用**两步验证**
+2. 进入 **应用专用密码**（App passwords），选择「邮件」→ 其他（自定义名称）→ 输入名称（如：`投资日报`）→ **生成**
+3. 复制生成的 16 位密码（只显示一次）
 
-1. 登录你的 Gmail 账户
-2. 进入 [Google 账户安全设置](https://myaccount.google.com/security)
-3. 确保已启用 **两步验证**（必须）
-4. 在安全设置中，找到 **应用专用密码** 或 **App passwords**
-5. 选择 **邮件** 和设备类型（如：其他（自定义名称））
-6. 输入名称（如：`B站监控`），点击 **生成**
-7. **复制生成的16位密码**（只显示一次，请妥善保存）
+#### 配置 GitHub Secrets（用于 Actions）
 
-#### 步骤 1.2：配置 GitHub Secrets
+1. 仓库 **Settings** → **Secrets and variables** → **Actions**
+2. 添加：
+   - **`GMAIL_SENDER`**：发件 Gmail 地址
+   - **`GMAIL_APP_PASSWORD`**：上述 16 位应用专用密码
+   - **`GMAIL_RECIPIENT`**：收件邮箱
 
-1. 进入你的 GitHub 仓库
-2. 点击 **Settings** → **Secrets and variables** → **Actions**
-3. 点击 **New repository secret**，依次添加以下三个 secrets：
+### 2. 配置持仓与关注股票
 
-   - **`GMAIL_SENDER`**：你的 Gmail 邮箱地址（如：`yourname@gmail.com`）
-   - **`GMAIL_APP_PASSWORD`**：刚才生成的16位应用专用密码
-   - **`GMAIL_RECIPIENT`**：接收通知的邮箱地址（可以是同一邮箱或不同邮箱）
-   - **`YOUTUBE_API_KEY`**（可选）：如果要监控YouTube频道，需要配置YouTube Data API v3密钥
-
-**重要提示**：
-- 必须使用**应用专用密码**，不能使用普通密码
-- 如果未启用两步验证，无法生成应用专用密码
-- 如需监控YouTube频道，请先获取YouTube Data API密钥（见下方说明）
-
-#### YouTube API Key 获取方法（可选）
-
-1. 访问 [Google Cloud Console](https://console.cloud.google.com/)
-2. 创建新项目或选择现有项目
-3. 启用 **YouTube Data API v3**
-4. 创建 **API密钥**（Credentials → Create Credentials → API Key）
-5. 复制API密钥，添加到 GitHub Secrets 的 `YOUTUBE_API_KEY`
-
-### 2. 配置监控的UP主和YouTube频道
-
-编辑 `up_list.py` 文件：
-
-#### 2.1 配置B站UP主
+编辑 `invest_config.py`：
 
 ```python
-# UP主列表：{UID: UP主名字}
-UP_LIST = {
-    4401694: "林亦LYi",
-    130636947: "塑料叉FOKU",
-    # 添加更多UP主的UID...
-}
-
-# 特殊UP主列表（这些UP主的视频不进行关键词过滤，直接推送）
-NO_FILTER_UIDS = [
-    419743655,  # BiBiPiano
-    # 添加更多不需要关键词过滤的UP主UID...
+# 持仓列表：用于「持仓新闻」搜索
+HOLDINGS = [
+    {"symbol": "TSM", "market": "us", "name": "台積電"},
+    {"symbol": "BTC", "market": "crypto", "name": "比特币"},
+    # market: cn / us / crypto
 ]
+
+# 财报关注：None 表示用持仓中的股票（cn/us）做财报搜索
+EARNINGS_WATCH = None
 ```
 
-#### 2.2 配置YouTube频道（可选）
+### 3. 本地运行
 
-```python
-# YouTube频道列表：{Channel ID: 频道名字}
-# Channel ID 格式：UCxxxxx（24个字符）
-YOUTUBE_CHANNELS = {
-    'UCxxxxx': "频道名字",
-    # 添加更多频道的Channel ID...
-}
-
-# YouTube特殊频道列表（这些频道的视频不进行关键词过滤，直接推送）
-YOUTUBE_NO_FILTER_CHANNELS = [
-    'UCxxxxx',  # 频道名字
-    # 添加更多不需要关键词过滤的频道ID...
-]
-```
-
-**如何获取YouTube Channel ID**：
-- 方法1：访问频道的 YouTube Studio，在"设置"→"高级设置"中查看Channel ID
-- 方法2：访问频道页面，查看URL或页面源代码中的Channel ID
-
-### 3. 配置关键词（可选）
-
-编辑 `up_list.py` 文件，修改 `KEYWORDS` 列表：
-
-```python
-KEYWORDS = [
-    "AIGC",
-    "工作流",
-    "模型",
-    # 添加更多关键词...
-]
-```
-
-### 4. 运行方式
-
-#### 方式一：GitHub Actions 自动运行（推荐）
-
-- 每天北京时间 9:00 自动运行
-- 也可以在 **Actions** 页面手动触发
-
-#### 方式二：本地运行
-
-**推荐方式：使用 .env 文件（最简单）**
-
-1. 复制 `.env.example` 为 `.env`：
-   ```bash
-   # Linux/Mac
-   cp .env.example .env
-   
-   # Windows PowerShell
-   copy .env.example .env
-   
-   # Windows CMD
-   copy .env.example .env
-   ```
-
-2. 编辑 `.env` 文件，填入你的实际配置值：
+1. 复制 `.env.example` 为 `.env`，填入 Gmail 配置：
    ```env
    GMAIL_SENDER=yourname@gmail.com
    GMAIL_APP_PASSWORD=your_16_digit_app_password
    GMAIL_RECIPIENT=recipient@example.com
-   YOUTUBE_API_KEY=your_youtube_api_key  # 可选，仅在监控YouTube时需要
    ```
-
-3. 运行脚本：
+2. 安装依赖后运行：
    ```bash
-   python main.py
+   pip install -r requirements.txt
+   python invest_daily.py
    ```
 
-**备选方式：使用命令行设置环境变量**
+### 4. 自动运行（GitHub Actions）
 
-如果不想使用 .env 文件，也可以通过命令行设置环境变量：
-
-```bash
-# 安装依赖
-pip install -r requirements.txt
-
-# 设置环境变量（Linux/Mac）
-export GMAIL_SENDER="yourname@gmail.com"
-export GMAIL_APP_PASSWORD="your_16_digit_app_password"
-export GMAIL_RECIPIENT="recipient@example.com"
-export YOUTUBE_API_KEY="your_youtube_api_key"  # 可选，仅在监控YouTube时需要
-
-# 设置环境变量（Windows PowerShell）
-$env:GMAIL_SENDER="yourname@gmail.com"
-$env:GMAIL_APP_PASSWORD="your_16_digit_app_password"
-$env:GMAIL_RECIPIENT="recipient@example.com"
-$env:YOUTUBE_API_KEY="your_youtube_api_key"  # 可选，仅在监控YouTube时需要
-
-# 设置环境变量（Windows CMD）
-set GMAIL_SENDER=yourname@gmail.com
-set GMAIL_APP_PASSWORD=your_16_digit_app_password
-set GMAIL_RECIPIENT=recipient@example.com
-set YOUTUBE_API_KEY=your_youtube_api_key  # 可选，仅在监控YouTube时需要
-
-# 运行脚本
-python main.py
-```
-
-**注意**：环境变量的优先级为：系统环境变量 > .env 文件。如果系统环境变量已设置，会优先使用系统环境变量。
-
-#### 方式三：本地测试（推荐用于开发调试）
-
-使用测试脚本可以预览日报/周报内容，不会发送真实邮件：
-
-```bash
-# 运行测试脚本
-python test_local.py
-```
-
-测试脚本功能：
-- ✅ 可以选择日报模式（26小时）或周报模式（7天）
-- ✅ 不发送真实邮件，只在控制台显示邮件预览
-- ✅ 使用临时文件 `history_test.json`，不会影响真实的 `history.json`
-- ✅ 完整展示抓取的视频列表和报告格式
-
-**注意事项**：
-- 测试脚本会真实抓取UP主的视频数据
-- 如果需要测试邮件发送，可以修改 `test_local.py` 中的 `SEND_REAL_EMAIL = True`
+- 工作流：`.github/workflows/invest_daily.yml`
+- 默认每天 **UTC 0:00**（北京时间 8:00）运行，也可在 Actions 页手动触发
+- 运行后会提交更新后的 `invest_history.json`，实现跨周期去重
 
 ## 项目结构
 
 ```
 .
-├── main.py                    # UGC 监控主程序
-├── invest_daily.py           # 投资日报入口
-├── invest_config.py           # 投资日报配置（持仓、关注股票）
-├── invest/                    # 投资日报模块
-│   ├── dedup.py               # 7 天去重
-│   ├── news.py                # 持仓新闻 + 财报新闻抓取
-│   └── report.py              # 日报 HTML 组装
+├── invest_daily.py       # 入口：拉配置 → 抓新闻 → 去重 → 组报 → 发邮件
+├── invest_config.py     # 持仓、财报关注配置
+├── invest/
+│   ├── dedup.py         # 7 天去重（invest_history.json）
+│   ├── news.py          # 持仓新闻 + 财报新闻抓取
+│   └── report.py        # 日报 HTML 组装
 ├── tools/
-│   ├── email_sender.py        # Gmail 发送（UGC + 投资日报共用）
-│   └── search_engine.py       # DuckDuckGo 搜索
-├── test_local.py              # 本地测试脚本
-├── history.json               # UGC 已处理视频记录（自动生成）
-├── invest_history.json        # 投资日报 7 天去重记录（自动生成）
-├── up_list.py                 # UP主列表配置
-├── requirements.txt           # Python依赖
+│   ├── email_sender.py  # Gmail 发送
+│   └── search_engine.py # 搜索（DuckDuckGo 等）
+├── invest_history.json  # 7 天去重记录（自动生成/提交）
 ├── .github/workflows/
-│   ├── daily.yml              # UGC 每日抓取
-│   └── invest_daily.yml       # 投资日报每日发送
-└── README.md                  # 本文件
+│   └── invest_daily.yml # 投资日报定时任务
+└── README.md
 ```
-
-## 工作原理
-
-1. **Memory (记忆层)**：`HistoryManager` 类管理 `history.json`，记录已处理的视频（支持B站bvid和YouTube video_id）
-2. **Fetcher (数据源)**：并发获取B站UP主和YouTube频道的最新视频列表
-3. **Filter (过滤器)**：关键词过滤 → (预留)LLM语义判断，支持B站和YouTube两种平台
-4. **Notifier (通知器)**：发送合并的推送消息（B站和YouTube更新在同一封邮件中）
 
 ## 注意事项
 
-- `history.json` 会自动提交到仓库，实现跨运行周期的持久化
-- 首次运行会创建 `history.json` 文件
-- GitHub Actions 会自动提交更新后的 `history.json`
-- 7天前的记录会自动清理
-
-## 投资日报（MVP）
-
-每日抓取**持仓相关新闻**与**上市公司财报**新闻，7 天去重后发一封 Gmail。
-
-### 配置
-
-1. 编辑 `invest_config.py`：
-   - **HOLDINGS**：持仓列表，每项 `symbol`、`market`（`cn`/`us`/`crypto`）、可选 `name`
-   - **EARNINGS_WATCH**：用于财报搜索的股票；填 `None` 表示使用持仓中的股票部分
-
-2. Gmail 与 UGC 监控共用同一套 Secrets（`GMAIL_SENDER`、`GMAIL_APP_PASSWORD`、`GMAIL_RECIPIENT`）
-
-### 运行方式
-
-- **GitHub Actions**：`.github/workflows/invest_daily.yml` 每天 UTC 0:00（北京时间 8:00）运行，也可在 Actions 页手动触发
-- **本地**：`python invest_daily.py`（需在项目根目录，且已配置 `.env` 中的 Gmail）
-
-### 说明
-
-- 去重记录保存在 `invest_history.json`，workflow 会像 `history.json` 一样自动提交
-- 后续可扩展：财报日历、财报解读、IPO 雷达、指标阈值告警等
-
-## 未来扩展
-
-- [x] 支持YouTube频道监控
-- [ ] 支持监控forum中的每天的新post
-- [ ] 利用gemini总结youtube视频
-- [ ] 接入LLM API实现语义判断
-- [ ] 添加视频分类功能
+- `.env` 已加入 `.gitignore`，不会被提交
+- 去重记录 `invest_history.json` 由 workflow 自动提交，便于多环境共享
+- 后续可扩展：财报日历、Form 4、量化指标阈值、IPO 雷达等
 
 ## License
 
