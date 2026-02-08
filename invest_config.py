@@ -19,6 +19,9 @@ HOLDINGS = [
 # 若希望财报范围更大，可在此单独列出，格式同持仓（仅 cn/us）
 EARNINGS_WATCH = None  # 例如: [{"symbol": "600519", "market": "cn", "name": "贵州茅台"}, ...]
 
+# Seeking Alpha：抓取这些标的的 combined RSS（News + Analysis）。None 表示用持仓中的美股
+SEEKING_ALPHA_TICKERS = None  # 例如: ["TSM", "AAPL"]；None = 持仓里 market=="us" 的 symbol
+
 
 def get_holdings():
     """返回持仓列表，每项至少包含 symbol, market, name（缺省用 symbol）"""
@@ -37,3 +40,11 @@ def get_earnings_stocks():
         ]
     holdings = get_holdings()
     return [h for h in holdings if h["market"] in ("cn", "us")]
+
+
+def get_seeking_alpha_tickers():
+    """返回要抓取 Seeking Alpha combined feed 的股票代码列表。None 表示用持仓中的美股"""
+    if SEEKING_ALPHA_TICKERS is not None:
+        return list(SEEKING_ALPHA_TICKERS)
+    holdings = get_holdings()
+    return [h["symbol"] for h in holdings if h["market"] == "us"]

@@ -6,6 +6,7 @@
 
 - **持仓新闻**：按 `invest_config.py` 中的持仓列表（A 股/美股/加密货币）抓取相关新闻（RSS/搜索）
 - **财报新闻**：按关注股票抓取财报相关新闻
+- **Seeking Alpha**：按美股标的抓取 News（标题 + 列表页链接）与 Analysis（标题 + 文章链接），7 天去重
 - **7 天去重**：同一链接 7 天内不重复推送，记录保存在 `invest_history.json`
 - **Gmail 推送**：HTML 邮件，支持 GitHub Actions 自动运行并提交去重记录
 
@@ -41,6 +42,9 @@ HOLDINGS = [
 
 # 财报关注：None 表示用持仓中的股票（cn/us）做财报搜索
 EARNINGS_WATCH = None
+
+# Seeking Alpha：None 表示用持仓中的美股；也可单独列如 ["TSM", "AAPL"]
+SEEKING_ALPHA_TICKERS = None
 ```
 
 ### 3. 本地运行
@@ -51,7 +55,7 @@ EARNINGS_WATCH = None
    GMAIL_APP_PASSWORD=your_16_digit_app_password
    GMAIL_RECIPIENT=recipient@example.com
    ```
-2. 安装依赖后运行：
+2. 安装依赖（含 `feedparser`、`ddgs`、`python-dotenv`）后运行：
    ```bash
    pip install -r requirements.txt
    python invest_daily.py
@@ -72,7 +76,8 @@ EARNINGS_WATCH = None
 ├── invest/
 │   ├── dedup.py         # 7 天去重（invest_history.json）
 │   ├── news.py          # 持仓新闻 + 财报新闻抓取
-│   └── report.py        # 日报 HTML 组装
+│   ├── report.py        # 日报 HTML 组装
+│   └── sa_rss.py        # Seeking Alpha RSS（News + Analysis）
 ├── tools/
 │   ├── email_sender.py  # Gmail 发送
 │   └── search_engine.py # 搜索（DuckDuckGo 等）

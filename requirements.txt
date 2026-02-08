@@ -1,0 +1,4 @@
+# 投资日报
+python-dotenv>=1.0
+feedparser>=6.0
+ddgs>=0.0.1

@@ -1,5 +1,5 @@
 """
-持仓新闻 + 财报新闻：按配置生成搜索 query，调用 search_engine，去重后返回
+财报新闻：按配置生成搜索 query，调用 search_engine，去重后返回
 """
 import hashlib
 import sys
@@ -26,42 +26,6 @@ def _normalize_result(r, source_label):
         "source": source_label,
         "id": _item_id(url, title),
     }
-
-
-def fetch_portfolio_news(holdings, history, max_results_per=8, delay_sec=1):
-    """
-    根据持仓列表搜「最新/新闻」，去重后返回列表。
-    holdings: list of {symbol, market, name}
-    history: InvestHistoryManager
-    返回: list of {id, url, title, snippet, source}
-    """
-    seen_id = set()
-    out = []
-    for h in holdings:
-        symbol = h["symbol"]
-        market = h["market"]
-        name = h.get("name") or symbol
-        if market == "cn":
-            query = f"{name} {symbol} 最新 新闻"
-        elif market == "us":
-            query = f"{name} {symbol} news"
-        else:
-            query = f"{name} {symbol} 新闻 news"
-        try:
-            raw = search_with_retry(query, max_results=max_results_per, max_retries=2)
-        except Exception as e:
-            print(f"持仓新闻搜索失败 [{name}]: {e}", file=sys.stderr)
-            raw = []
-        for r in raw:
-            row = _normalize_result(r, name)
-            if row["id"] in seen_id:
-                continue
-            if history.is_reported(row["id"]):
-                continue
-            seen_id.add(row["id"])
-            out.append(row)
-        time.sleep(delay_sec)
-    return out
 
 
 def fetch_earnings_news(earnings_stocks, history, max_results_per=8, delay_sec=1):
