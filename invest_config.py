@@ -16,8 +16,9 @@ HOLDINGS = [
     {"symbol": "TSLA", "market": "us", "name": "Tesla"},
     {"symbol": "AMD", "market": "us", "name": "AMD"},
     {"symbol": "TSM", "market": "us", "name": "TSMC"},
+    {"symbol": "IBIT", "market": "us", "name": "Bitcoin ETF"},
     # 加密货币示例
-    {"symbol": "BTC", "market": "crypto", "name": "Bitcoin"},
+    {"symbol": "BTC", "market": "crypto", "name": "BTC"},
 ]
 
 # 关注股票（用于财报搜索）。若与持仓一致，填 None 表示自动使用持仓中的股票部分
