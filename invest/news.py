@@ -57,6 +57,7 @@ def fetch_earnings_news(earnings_stocks, history, max_results_per=8, delay_sec=1
             if history.is_reported(row["id"]):
                 continue
             seen_id.add(row["id"])
+            row["symbol"] = symbol
             out.append(row)
         time.sleep(delay_sec)
     return out

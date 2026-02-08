@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 # 显式从项目根加载 .env，避免因工作目录不同而读不到
 load_dotenv(os.path.join(_project_root, ".env"))
 
-from invest_config import get_earnings_stocks, get_seeking_alpha_tickers
+from invest_config import get_earnings_stocks, get_holdings, get_seeking_alpha_tickers
 from invest.dedup import InvestHistoryManager
 from invest.news import fetch_earnings_news
 from invest.report import build_html
@@ -50,8 +50,22 @@ def main():
     for n in sa_news + sa_analysis:
         history.mark_reported(n["id"])
 
-    # 组装日报并发送
-    html = build_html(earnings_news, sa_news=sa_news, sa_analysis=sa_analysis)
+    # 标的顺序与展示名：财报顺序优先，再补 SA 独有；展示名来自财报列表与持仓
+    earnings_symbols = [h["symbol"] for h in earnings_stocks]
+    sa_only = [t for t in sa_tickers if t not in set(earnings_symbols)]
+    symbol_order = earnings_symbols + sa_only
+    symbol_to_name = {h["symbol"]: h["name"] for h in earnings_stocks}
+    for h in get_holdings():
+        symbol_to_name[h["symbol"]] = h["name"]  # 覆盖或补充 SA 标的展示名
+
+    # 组装日报并发送（按股票分组，仅展示当日有内容的股票）
+    html = build_html(
+        earnings_news,
+        sa_news=sa_news,
+        sa_analysis=sa_analysis,
+        symbol_order=symbol_order,
+        symbol_to_name=symbol_to_name,
+    )
     today = datetime.date.today().strftime("%Y-%m-%d")
     subject = f"投资日报 · {today}"
 

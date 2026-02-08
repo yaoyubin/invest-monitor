@@ -92,6 +92,7 @@ def fetch_seeking_alpha(history, tickers, max_per_feed=20, delay_sec=1):
                     "snippet": snippet,
                     "source": f"Seeking Alpha ({ticker})",
                     "type": "news",
+                    "symbol": ticker,
                 }
                 sa_news.append(row)
             else:
@@ -103,6 +104,7 @@ def fetch_seeking_alpha(history, tickers, max_per_feed=20, delay_sec=1):
                     "snippet": snippet,
                     "source": f"Seeking Alpha ({ticker})",
                     "type": "analysis",
+                    "symbol": ticker,
                 }
                 sa_analysis.append(row)
             count += 1
