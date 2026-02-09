@@ -863,6 +863,14 @@
     {
       "id": "finnhub_insider:AMD:2026-01-20:Hahn Ava:18142:27175",
       "reported_at": 1770526372
+    },
+    {
+      "id": "d1278d39451962d30a51aa41c29c35ef1749e0166373850021fe6e30e306da2b",
+      "reported_at": 1770604314
+    },
+    {
+      "id": "ce23cb89ee06220e6316d0dca7f88eb906f04c9d994dd6f93611434e22ab315e",
+      "reported_at": 1770604314
     }
   ]
 }
