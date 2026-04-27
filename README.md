@@ -94,6 +94,18 @@ python invest_daily.py
 
 工作流 `.github/workflows/invest_daily.yml` 默认每天 UTC 0:00 运行；运行后会自动 commit 更新的 `invest_history.json`。
 
+### 5. 本地 dry-run 预览（不发邮件）
+
+调整 `watchlist.yaml` 或开发新功能时，用 `dry_run.py` 跑完整 pipeline 但不发 Gmail，HTML 写入 `/tmp/radar_preview.html`：
+
+```bash
+python dry_run.py             # 不调 LLM（fallback：全部 B 级，thesis delta 全 0）
+python dry_run.py --use-llm   # 调用 LLM 评分（需配置 SCORER_LLM_PROVIDER + key）
+open /tmp/radar_preview.html  # macOS 浏览器预览
+```
+
+> macOS 系统 Python 若遇 SSL 证书报错，临时设置：`export SSL_CERT_FILE=$(python3 -c 'import certifi;print(certifi.where())')`
+
 ## 邮件输出结构
 
 ```
