@@ -1,15 +1,22 @@
 """
-投资日报 MVP 配置
-- 持仓列表：用于「持仓新闻」搜索（股票 + 加密货币）
-- 关注股票（财报）：用于「财报」搜索；可与持仓中的股票部分一致或单独列出
-"""
+投资雷达配置
 
-# 持仓列表：每项 symbol（代码/symbol）、market（cn/us/crypto）、可选 name（展示用）
+数据源优先级：
+1. 项目根目录的 watchlist.yaml（推荐）— 区分 holdings（持仓，看 thesis delta）和 candidates（候选，看 entry trigger）
+2. 本文件中的 HOLDINGS 列表（fallback，仅在 watchlist.yaml 不存在时使用）
+
+watchlist.yaml 不存在时，仅使用 HOLDINGS（旧行为），不会启用 candidates 雷达。
+"""
+import os
+
+try:
+    import yaml  # PyYAML
+except ImportError:
+    yaml = None
+
+
+# Fallback：watchlist.yaml 不存在时使用此列表
 HOLDINGS = [
-    # A 股示例
-    # {"symbol": "600519", "market": "cn", "name": "贵州茅台"},
-    # 美股示例
-    # {"symbol": "AAPL", "market": "us", "name": "Apple"},
     {"symbol": "TCEHY", "market": "us", "name": "Tencent"},
     {"symbol": "MPNGY", "market": "us", "name": "MeiTuan"},
     {"symbol": "BILI", "market": "us", "name": "Bilibili"},
@@ -17,40 +24,87 @@ HOLDINGS = [
     {"symbol": "AMD", "market": "us", "name": "AMD"},
     {"symbol": "TSM", "market": "us", "name": "TSMC"},
     {"symbol": "IBIT", "market": "us", "name": "Bitcoin ETF"},
-    # 加密货币示例
     {"symbol": "BTC", "market": "crypto", "name": "BTC"},
 ]
 
-# 关注股票（用于财报搜索）。若与持仓一致，填 None 表示自动使用持仓中的股票部分
-# 若希望财报范围更大，可在此单独列出，格式同持仓（仅 cn/us）
-EARNINGS_WATCH = None  # 例如: [{"symbol": "600519", "market": "cn", "name": "贵州茅台"}, ...]
+EARNINGS_WATCH = None
+SEEKING_ALPHA_TICKERS = None
 
-# Seeking Alpha：抓取这些标的的 combined RSS（News + Analysis）。None 表示用持仓中的美股
-SEEKING_ALPHA_TICKERS = None  # 例如: ["TSM", "AAPL"]；None = 持仓里 market=="us" 的 symbol
+_WATCHLIST_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "watchlist.yaml")
+
+
+def _load_watchlist():
+    """加载 watchlist.yaml；不存在或解析失败时返回 None。"""
+    if yaml is None or not os.path.exists(_WATCHLIST_PATH):
+        return None
+    try:
+        with open(_WATCHLIST_PATH, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        return data
+    except Exception as e:
+        print(f"⚠️ 加载 watchlist.yaml 失败：{e}，回退到 HOLDINGS 列表")
+        return None
+
+
+def _flatten_section(section_dict):
+    """把 {SYMBOL: {name, market, ...}} 扁平为 [{symbol, market, name, ...}]"""
+    out = []
+    for symbol, cfg in (section_dict or {}).items():
+        cfg = cfg or {}
+        out.append({
+            "symbol": symbol,
+            "market": cfg.get("market", "us"),
+            "name": cfg.get("name") or symbol,
+            "thesis": cfg.get("thesis", []),
+            "red_flags": cfg.get("red_flags", []),
+            "why_not_buying_now": cfg.get("why_not_buying_now", []),
+            "revisit_triggers": cfg.get("revisit_triggers", []),
+        })
+    return out
 
 
 def get_holdings():
-    """返回持仓列表，每项至少包含 symbol, market, name（缺省用 symbol）"""
+    """返回持仓列表，每项至少含 symbol/market/name；若来自 yaml 还包含 thesis/red_flags。"""
+    data = _load_watchlist()
+    if data is not None:
+        return _flatten_section(data.get("holdings"))
     return [
         {"symbol": item["symbol"], "market": item["market"], "name": item.get("name") or item["symbol"]}
         for item in HOLDINGS
     ]
 
 
+def get_candidates():
+    """返回候选标的列表（未持仓但关注），每项含 symbol/market/name/why_not_buying_now/revisit_triggers。
+
+    watchlist.yaml 不存在时返回空列表（不启用 candidates 雷达）。
+    """
+    data = _load_watchlist()
+    if data is None:
+        return []
+    return _flatten_section(data.get("candidates"))
+
+
 def get_earnings_stocks():
-    """返回用于财报搜索的股票列表。若 EARNINGS_WATCH 为 None，则用持仓中的股票（cn/us）"""
+    """财报搜索用的股票列表。EARNINGS_WATCH 为 None 时用持仓中的 cn/us。"""
     if EARNINGS_WATCH is not None:
         return [
             {"symbol": item["symbol"], "market": item["market"], "name": item.get("name") or item["symbol"]}
             for item in EARNINGS_WATCH
         ]
-    holdings = get_holdings()
-    return [h for h in holdings if h["market"] in ("cn", "us")]
+    return [h for h in get_holdings() if h["market"] in ("cn", "us")]
 
 
 def get_seeking_alpha_tickers():
-    """返回要抓取 Seeking Alpha combined feed 的股票代码列表。None 表示用持仓中的美股"""
+    """Seeking Alpha combined feed 的标的代码。None 表示用持仓+候选中的美股。"""
     if SEEKING_ALPHA_TICKERS is not None:
         return list(SEEKING_ALPHA_TICKERS)
-    holdings = get_holdings()
-    return [h["symbol"] for h in holdings if h["market"] == "us"]
+    holdings_us = [h["symbol"] for h in get_holdings() if h["market"] == "us"]
+    candidates_us = [c["symbol"] for c in get_candidates() if c["market"] == "us"]
+    seen = set()
+    out = []
+    for s in holdings_us + candidates_us:
+        if s not in seen:
+            seen.add(s)
+            out.append(s)
+    return out

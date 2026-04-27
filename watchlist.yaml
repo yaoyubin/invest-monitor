@@ -1,0 +1,138 @@
+# 投资雷达 watchlist
+#
+# holdings: 已持仓的标的，雷达每日检查 thesis 是否被增强或削弱（thesis delta）
+# candidates: 尚未持仓但关注的标的，雷达每日检查 entry trigger 是否命中
+#
+# 字段说明：
+# - thesis: 持有的核心理由（雷达据此判断信息是支持还是削弱原判断）
+# - red_flags: 让我重新评估或卖出的信号
+# - why_not_buying_now: 现在不买的具体理由（写不出来就不该放进 candidates）
+# - revisit_triggers: 满足任一就把该标的升为 A 级提醒，可验证、可观测，避免模糊词
+#
+# 纪律：candidates 不超过 10 只；季度复盘一次，触发过未行动的要么删除要么升级为持仓
+
+holdings:
+  AMD:
+    name: AMD
+    market: us
+    thesis:
+      - AI GPU revenue growth 持续超预期
+      - Data Center 占比提升带动毛利率改善
+      - CPU + GPU + networking + software 平台化进展
+      - 与 NVIDIA 的差距是否缩小
+    red_flags:
+      - AI GPU guidance 下修
+      - 毛利率不升反降
+      - 大客户转向自研 ASIC
+      - HBM/CoWoS 封装瓶颈持续
+
+  TSLA:
+    name: Tesla
+    market: us
+    thesis:
+      - FSD 进展和监管放行
+      - 汽车毛利率企稳
+      - Robotaxi 商业化时间表
+      - Optimus 量产路径
+    red_flags:
+      - 交付量持续下滑
+      - 毛利率压力扩大
+      - FSD 重大事故/监管收紧
+
+  TSM:
+    name: TSMC
+    market: us
+    thesis:
+      - 先进制程（3nm/2nm）份额垄断
+      - AI capex 拉动 CoWoS 需求
+      - 美国/日本/欧洲产能扩张顺利
+    red_flags:
+      - 大客户砍单
+      - 地缘政治升级（台海/出口管制）
+      - 制程良率事故
+
+  TCEHY:
+    name: Tencent
+    market: us
+    thesis:
+      - 游戏业务恢复增长
+      - 广告业务受益于视频号
+      - 持续大额回购
+      - WeChat 生态优势
+      - AI/云业务期权价值
+    red_flags:
+      - 游戏监管收紧
+      - 宏观消费持续走弱
+      - 回购明显放缓
+
+  BILI:
+    name: Bilibili
+    market: us
+    thesis:
+      - 广告业务变现率提升
+      - 游戏业务自研突破
+      - 经营杠杆释放、利润率改善
+    red_flags:
+      - DAU/MAU 增长停滞
+      - 毛利率倒退
+      - 现金流持续为负
+
+  MPNGY:
+    name: MeiTuan
+    market: us
+    thesis:
+      - 本地生活护城河
+      - 即时零售业务成长
+      - 海外（Keeta）扩张
+    red_flags:
+      - 抖音等竞争压力扩大
+      - 海外亏损扩大无清晰路径
+      - 监管打压外卖费率
+
+  IBIT:
+    name: Bitcoin ETF
+    market: us
+    thesis:
+      - 比特币长期价值储存逻辑
+      - ETF 资金持续净流入
+    red_flags:
+      - ETF 大额净流出
+      - 监管政策反转
+
+  BTC:
+    name: BTC
+    market: crypto
+    thesis:
+      - 长期价值储存
+      - 减半周期供需逻辑
+    red_flags:
+      - 主要经济体禁令
+      - 大型交易所/稳定币崩盘
+
+candidates:
+  INTC:
+    name: Intel
+    market: us
+    why_not_buying_now:
+      - 代工业务持续亏损
+      - 制程仍落后 TSMC 1-2 代
+      - AI GPU 故事尚未兑现
+    revisit_triggers:
+      - 新 CEO 上任后首份财报营收/毛利超预期
+      - 拿到外部大客户代工订单（NVDA / QCOM / AAPL / AMD）
+      - 18A 制程量产时间确认且良率公开披露
+      - CHIPS 法案具体拨款落地或追加投资
+      - 美国政府入股或战略投资公开
+
+  0981.HK:
+    name: SMIC 中芯国际
+    market: hk
+    why_not_buying_now:
+      - 当前不盈利，估值偏贵
+      - 美国制裁限制先进设备进口
+    revisit_triggers:
+      - 国内 AI 芯片大客户（华为昇腾/寒武纪）量产订单确认
+      - N+2/N+3 制程良率突破公开数据
+      - 季度毛利率连续两季改善
+      - 资本开支指引大幅上修
+      - 国家大基金或产业链重大资本运作
