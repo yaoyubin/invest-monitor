@@ -1,8 +1,18 @@
 #!/usr/bin/env /workspace/tmp_windsurf/venv/bin/python3
 
-import google.generativeai as genai
-from openai import OpenAI, AzureOpenAI
-from anthropic import Anthropic
+# 各家 SDK 改为可选 import：缺哪个 SDK，对应 provider 才会报错，其他 provider 不受影响
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
+try:
+    from openai import OpenAI, AzureOpenAI
+except ImportError:
+    OpenAI = AzureOpenAI = None
+try:
+    from anthropic import Anthropic
+except ImportError:
+    Anthropic = None
 import argparse
 import os
 from dotenv import load_dotenv
@@ -210,7 +220,7 @@ def query_llm(prompt: str, client=None, model=None, provider="openai", image_pat
             
             response = client.messages.create(
                 model=model,
-                max_tokens=1000,
+                max_tokens=16384,
                 messages=messages
             )
             return response.content[0].text

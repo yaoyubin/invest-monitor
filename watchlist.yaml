@@ -25,6 +25,7 @@ holdings:
       - 毛利率不升反降
       - 大客户转向自研 ASIC
       - HBM/CoWoS 封装瓶颈持续
+      - 知名基金（ARK/Berkshire/Tiger Global/景林/高瓴 等）大额减持，且满足以下任一：清仓 / 单季减持超 30% / 连续两季减持。仅"小幅减持"或"再平衡"不算
 
   TSLA:
     name: Tesla

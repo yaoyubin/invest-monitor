@@ -14,7 +14,8 @@ _project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _project_root)
 
 from dotenv import load_dotenv
-load_dotenv(os.path.join(_project_root, ".env"))
+# override=True：本地 .env 的值优先于 shell 环境（避免 shell 里残留的空值/旧值干扰调试）
+load_dotenv(os.path.join(_project_root, ".env"), override=True)
 
 from invest_config import (
     get_candidates,
@@ -39,6 +40,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--use-llm", action="store_true", help="调用 LLM 评分；否则 fallback 全 B 级")
     ap.add_argument("--out", default="/tmp/radar_preview.html", help="HTML 输出文件")
+    ap.add_argument("--limit", type=int, default=0, help="只评分前 N 条（0=全部）；调试用，避免一次跑几百条")
     args = ap.parse_args()
 
     if not args.use_llm:
@@ -109,6 +111,15 @@ def main():
         items_for_scoring.append({**it, "_kind": "sa_analysis"})
     for it in form4_list:
         items_for_scoring.append({**it, "_kind": "form4"})
+
+    if args.limit and args.limit < len(items_for_scoring):
+        print(f"⚠️  --limit={args.limit}：从 {len(items_for_scoring)} 条中只评分前 {args.limit} 条（调试用）")
+        items_for_scoring = items_for_scoring[: args.limit]
+        kept_ids = {it.get("id") for it in items_for_scoring}
+        earnings_forward = [it for it in earnings_forward if it.get("id") in kept_ids]
+        sa_news = [it for it in sa_news if it.get("id") in kept_ids]
+        sa_analysis = [it for it in sa_analysis if it.get("id") in kept_ids]
+        form4_list = [it for it in form4_list if it.get("id") in kept_ids]
 
     scorer_result = score_items(items_for_scoring, holdings, candidates)
     scored = scorer_result["scored_items"]

@@ -12,6 +12,7 @@
 - LLM 不可用或 API key 未配置时优雅降级（返回原始信息，全部标 B）
 - 强制返回 JSON，解析失败时 fallback
 """
+import datetime
 import json
 import os
 import sys
@@ -24,6 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 GRADES = {"S", "A", "B", "C"}
 SCORER_PROVIDER = os.getenv("SCORER_LLM_PROVIDER", "openai")
 SCORER_MODEL = os.getenv("SCORER_LLM_MODEL")  # None → use provider default
+SCORER_DEBUG_DIR = os.getenv("SCORER_DEBUG_DIR")  # 设为目录路径则把 prompt/response/parsed 落盘
 
 
 SCORER_SYSTEM_PROMPT = """你是一个投资雷达助手。任务：对当日聚合的信息打分，并对照 watchlist 检查 thesis 变化与候选标的的 entry trigger。
@@ -186,6 +188,7 @@ def score_items(items, holdings, candidates):
     prompt = _build_user_prompt(items, holdings, candidates)
     full_prompt = SCORER_SYSTEM_PROMPT + "\n\n" + prompt
     print(f"scorer: 调用 LLM 评分（provider={SCORER_PROVIDER}, items={len(items)}）...")
+    response = None
     try:
         # Lazy import：避免在没有装齐所有 SDK 时模块加载失败
         from tools.llm_api import create_llm_client, query_llm
@@ -193,9 +196,11 @@ def score_items(items, holdings, candidates):
         response = query_llm(full_prompt, client=client, model=SCORER_MODEL, provider=SCORER_PROVIDER)
     except Exception as e:
         print(f"⚠️ scorer 调用失败：{e}", file=sys.stderr)
+        _debug_dump(full_prompt, response, None, error=str(e))
         return _fallback_passthrough(items, holdings)
 
     parsed = _parse_response(response)
+    _debug_dump(full_prompt, response, parsed)
     if not parsed:
         return _fallback_passthrough(items, holdings)
 
@@ -226,6 +231,29 @@ def score_items(items, holdings, candidates):
         s["grade"] = g if g in GRADES else "B"
 
     return parsed
+
+
+def _debug_dump(prompt: str, response, parsed, error: Optional[str] = None) -> None:
+    """SCORER_DEBUG_DIR 设了就把 LLM 输入/输出/解析结果写到时间戳文件，方便事后排查。"""
+    if not SCORER_DEBUG_DIR:
+        return
+    try:
+        os.makedirs(SCORER_DEBUG_DIR, exist_ok=True)
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        path = os.path.join(SCORER_DEBUG_DIR, f"scorer_{ts}.json")
+        payload = {
+            "provider": SCORER_PROVIDER,
+            "model": SCORER_MODEL,
+            "prompt": prompt,
+            "raw_response": response,
+            "parsed": parsed,
+            "error": error,
+        }
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+        print(f"scorer: debug dump → {path}")
+    except Exception as e:
+        print(f"⚠️ scorer debug dump 失败：{e}", file=sys.stderr)
 
 
 def _llm_available() -> bool:

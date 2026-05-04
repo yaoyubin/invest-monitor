@@ -31,4 +31,6 @@ history.json
 # 临时文件
 *.log
 *.tmp
+logs/
+scorer_debug/
 
