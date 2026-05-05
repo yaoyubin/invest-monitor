@@ -10,3 +10,6 @@ PyYAML>=6.0
 openai>=1.0
 # anthropic>=0.40
 # google-generativeai>=0.7
+# 雪球大V抓取（可选；invest/xueqiu.py 用）
+# 第一次安装后需执行 `playwright install chromium` 下载浏览器
+playwright>=1.40

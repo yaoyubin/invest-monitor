@@ -34,4 +34,6 @@ history.json
 *.tmp
 logs/
 scorer_debug/
+# Playwright 持久化登录态（含雪球 cookie，绝对不能上传）
+chrome_profile/
 

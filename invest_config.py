@@ -108,3 +108,21 @@ def get_seeking_alpha_tickers():
             seen.add(s)
             out.append(s)
     return out
+
+
+def get_xueqiu_kols():
+    """雪球大V uid 列表。从 watchlist.yaml 的 xueqiu_kols 节读取。"""
+    data = _load_watchlist()
+    if data is None:
+        return []
+    raw = data.get("xueqiu_kols") or []
+    # 兼容两种写法：[uid, ...] 或 [{uid: ..., name: ...}, ...]
+    out = []
+    for item in raw:
+        if isinstance(item, dict):
+            uid = item.get("uid")
+            if uid:
+                out.append({"uid": str(uid), "name": item.get("name") or str(uid)})
+        else:
+            out.append({"uid": str(item), "name": str(item)})
+    return out
