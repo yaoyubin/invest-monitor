@@ -482,6 +482,93 @@ async def fetch_kol_posts(
     return all_posts
 
 
+async def fetch_kol_names(
+    kols: List[dict],
+    profile_dir: Optional[str] = None,
+    headless: bool = True,
+    delay_range: tuple = (1.5, 2.5),
+) -> dict:
+    """逐个访问大V主页，从 page.title（"昵称\xa0-\xa0雪球"）抽出昵称。
+
+    返回 {uid: nickname}。失败的 uid 不出现在返回字典里。
+    """
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError:
+        print("⚠️ 未安装 playwright", file=sys.stderr)
+        return {}
+
+    profile_dir = profile_dir or os.getenv("XUEQIU_PROFILE_DIR") or DEFAULT_PROFILE_DIR
+    os.makedirs(profile_dir, exist_ok=True)
+    names = {}
+    title_re = re.compile(r"^(.+?)[ \s]+-[ \s]+雪球$")
+    async with async_playwright() as p:
+        ctx = await p.chromium.launch_persistent_context(
+            user_data_dir=profile_dir,
+            headless=headless,
+            args=["--disable-blink-features=AutomationControlled"],
+        )
+        page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+        for i, kol in enumerate(kols):
+            uid = kol["uid"]
+            try:
+                await page.goto(f"https://xueqiu.com/u/{uid}", wait_until="domcontentloaded", timeout=15000)
+                title = await page.title()
+                m = title_re.match(title or "")
+                nickname = m.group(1).strip() if m else None
+                if nickname:
+                    names[uid] = nickname
+                    print(f"  [{i+1}/{len(kols)}] {uid} → {nickname}")
+                else:
+                    print(f"  [{i+1}/{len(kols)}] {uid} → ⚠️ 解析失败 (title={title!r})")
+            except Exception as e:
+                print(f"  [{i+1}/{len(kols)}] {uid} → ⚠️ {e}")
+            if i < len(kols) - 1:
+                await asyncio.sleep(random.uniform(*delay_range))
+        await ctx.close()
+    return names
+
+
+def _rewrite_xueqiu_kols_section(watchlist_path: str, names_by_uid: dict, ordered_uids: List[str]) -> bool:
+    """改写 watchlist.yaml 里 xueqiu_kols 节为 [{uid, name}, ...] 形式。
+
+    保留 xueqiu_kols 之前的所有内容（含注释），只重写下面的列表。
+    返回是否改动。
+    """
+    with open(watchlist_path, "r", encoding="utf-8") as f:
+        text = f.read()
+
+    # 定位 xueqiu_kols 行
+    m = re.search(r"^xueqiu_kols:\s*\n", text, re.MULTILINE)
+    if not m:
+        print("⚠️ watchlist.yaml 里没找到 xueqiu_kols: 节", file=sys.stderr)
+        return False
+
+    head = text[: m.end()]
+    # 拼新列表
+    lines = []
+    for uid in ordered_uids:
+        name = names_by_uid.get(uid)
+        if name:
+            # 用 single quotes 安全包裹（避免昵称里有 yaml 特殊字符）
+            safe = name.replace("'", "''")
+            lines.append(f"  - {{uid: {uid}, name: '{safe}'}}")
+        else:
+            # 抓不到就保留 uid 单独形式
+            lines.append(f"  - {uid}")
+    new_section = "\n".join(lines) + "\n"
+
+    new_text = head + new_section
+    if new_text == text:
+        return False
+    # 备份再写
+    with open(watchlist_path + ".bak", "w", encoding="utf-8") as f:
+        f.write(text)
+    with open(watchlist_path, "w", encoding="utf-8") as f:
+        f.write(new_text)
+    return True
+
+
 def _cli():
     ap = argparse.ArgumentParser(description="雪球大V长文抓取器（独立测试入口）")
     ap.add_argument("--uids", help="逗号分隔 uid；留空则从 watchlist.yaml 读")
@@ -495,6 +582,7 @@ def _cli():
     ap.add_argument("--profile-dir", help="Chromium user_data_dir，默认 ./chrome_profile")
     ap.add_argument("--out", help="把结果以 JSON 写入此文件；留空则打印摘要到 stdout")
     ap.add_argument("--debug", action="store_true", help="打印 DOM 抽取细节 + 保存页面 HTML 到 /tmp/")
+    ap.add_argument("--names", action="store_true", help="只抓昵称并改写 watchlist.yaml 的 xueqiu_kols 节为 [{uid, name}, ...]，不抓帖子")
     args = ap.parse_args()
 
     # 加载 .env（兼容 .env 里设了 XUEQIU_PROFILE_DIR 等）
@@ -518,6 +606,24 @@ def _cli():
     if not kols:
         print("没有 uid 可抓。请用 --uids 或在 watchlist.yaml 配置 xueqiu_kols。", file=sys.stderr)
         sys.exit(1)
+
+    # —— 单独的"抓昵称"模式 ——
+    if args.names:
+        print(f"准备抓 {len(kols)} 个大V 的昵称...")
+        names = asyncio.run(fetch_kol_names(
+            kols, profile_dir=args.profile_dir, headless=not args.login,
+        ))
+        # 改写 watchlist.yaml
+        watchlist_path = os.path.join(project_root, "watchlist.yaml")
+        ordered_uids = [k["uid"] for k in kols]
+        changed = _rewrite_xueqiu_kols_section(watchlist_path, names, ordered_uids)
+        ok = sum(1 for u in ordered_uids if u in names)
+        print(f"\n抓到 {ok}/{len(ordered_uids)} 个昵称")
+        if changed:
+            print(f"已改写 {watchlist_path}（备份在 watchlist.yaml.bak）")
+        else:
+            print(f"无改动")
+        return
 
     print(
         f"准备抓 {len(kols)} 个大V  days={args.days}  min_chars={args.min_chars}  "
