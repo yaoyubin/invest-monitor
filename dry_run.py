@@ -13,15 +13,26 @@ import sys
 _project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _project_root)
 
+# macOS 系统 Python 经常缺 root CA，feedparser/urllib 抓 SA 会 SSL_VERIFY_FAILED
+# 用 certifi 自带的 CA bundle 兜底（已在间接依赖里），免得每次都要 export
+try:
+    import certifi
+    os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+except ImportError:
+    pass
+
 from dotenv import load_dotenv
 # override=True：本地 .env 的值优先于 shell 环境（避免 shell 里残留的空值/旧值干扰调试）
 load_dotenv(os.path.join(_project_root, ".env"), override=True)
+
+import asyncio
 
 from invest_config import (
     get_candidates,
     get_earnings_stocks,
     get_holdings,
     get_seeking_alpha_tickers,
+    get_xueqiu_kols,
 )
 from invest.dedup import InvestHistoryManager
 from invest.earnings_forward import get_earnings_forward
@@ -41,6 +52,11 @@ def main():
     ap.add_argument("--use-llm", action="store_true", help="调用 LLM 评分；否则 fallback 全 B 级")
     ap.add_argument("--out", default="/tmp/radar_preview.html", help="HTML 输出文件")
     ap.add_argument("--limit", type=int, default=0, help="只评分前 N 条（0=全部）；调试用，避免一次跑几百条")
+    ap.add_argument("--include-xueqiu", action="store_true",
+                    help="启用雪球大V抓取（需 Playwright + chrome_profile/ 已登录）")
+    ap.add_argument("--xueqiu-days", type=int, default=7, help="雪球只抓最近这些天的帖子（默认 7；KOL 多数不每天发文，配合 dedup 避免重复评分）")
+    ap.add_argument("--xueqiu-limit-kols", type=int, default=0,
+                    help="只抓前 N 个 KOL（0=全部）；调试用")
     args = ap.parse_args()
 
     if not args.use_llm:
@@ -94,23 +110,48 @@ def main():
         for item in form4_list:
             history.mark_reported(item["id"])
 
+    # 雪球大V长文（可选）
+    xueqiu_posts = []
+    if args.include_xueqiu:
+        kols = get_xueqiu_kols()
+        if args.xueqiu_limit_kols:
+            kols = kols[: args.xueqiu_limit_kols]
+        if kols:
+            print(f"抓雪球大V（{len(kols)} 人，days={args.xueqiu_days}）...")
+            from invest.xueqiu import fetch_kol_posts
+            try:
+                raw = asyncio.run(fetch_kol_posts(kols, days_back=args.xueqiu_days))
+            except Exception as e:
+                print(f"⚠️ 雪球抓取失败: {e}")
+                raw = []
+            # 7 天去重
+            xueqiu_posts = [p for p in raw if not history.is_reported(p["id"])]
+            for p in xueqiu_posts:
+                history.mark_reported(p["id"])
+            print(f"  → 抓到 {len(raw)} 条，去重后 {len(xueqiu_posts)} 条入库")
+
     print("获取纳指 ETF 溢价...")
     ndq_etf_premiums = get_ndq_etf_premiums()
 
     print(
         f"抓取结果：earnings={len(earnings_forward)}, sa_news={len(sa_news)}, "
-        f"sa_analysis={len(sa_analysis)}, form4={len(form4_list)}, etf={len(ndq_etf_premiums)}"
+        f"sa_analysis={len(sa_analysis)}, form4={len(form4_list)}, "
+        f"xueqiu={len(xueqiu_posts)}, etf={len(ndq_etf_premiums)}"
     )
 
+    # 评分顺序（信号密度从高到低，--limit 切掉时损失最小）：
+    # 财报前瞻 → 高管买卖 → 雪球长文 → SA Analysis → SA News
     items_for_scoring = []
     for it in earnings_forward:
         items_for_scoring.append({**it, "_kind": "earnings_forward"})
-    for it in sa_news:
-        items_for_scoring.append({**it, "_kind": "sa_news"})
-    for it in sa_analysis:
-        items_for_scoring.append({**it, "_kind": "sa_analysis"})
     for it in form4_list:
         items_for_scoring.append({**it, "_kind": "form4"})
+    for it in xueqiu_posts:
+        items_for_scoring.append({**it, "_kind": "xueqiu_post"})
+    for it in sa_analysis:
+        items_for_scoring.append({**it, "_kind": "sa_analysis"})
+    for it in sa_news:
+        items_for_scoring.append({**it, "_kind": "sa_news"})
 
     if args.limit and args.limit < len(items_for_scoring):
         print(f"⚠️  --limit={args.limit}：从 {len(items_for_scoring)} 条中只评分前 {args.limit} 条（调试用）")
@@ -120,6 +161,7 @@ def main():
         sa_news = [it for it in sa_news if it.get("id") in kept_ids]
         sa_analysis = [it for it in sa_analysis if it.get("id") in kept_ids]
         form4_list = [it for it in form4_list if it.get("id") in kept_ids]
+        xueqiu_posts = [it for it in xueqiu_posts if it.get("id") in kept_ids]
 
     scorer_result = score_items(items_for_scoring, holdings, candidates)
     scored = scorer_result["scored_items"]
@@ -137,6 +179,7 @@ def main():
     sa_news = attach_grades(sa_news, scored)
     sa_analysis = attach_grades(sa_analysis, scored)
     form4_list = attach_grades(form4_list, scored)
+    xueqiu_posts = attach_grades(xueqiu_posts, scored)
 
     earnings_symbols = [h["symbol"] for h in earnings_stocks]
     sa_only = [t for t in sa_tickers if t not in set(earnings_symbols)]
@@ -154,6 +197,7 @@ def main():
         sa_news=sa_news,
         sa_analysis=sa_analysis,
         form4_list=form4_list,
+        xueqiu_posts=xueqiu_posts,
         ndq_etf_premiums=ndq_etf_premiums,
         symbol_order=symbol_order,
         symbol_to_name=symbol_to_name,

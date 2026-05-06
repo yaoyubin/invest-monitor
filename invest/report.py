@@ -33,6 +33,7 @@ def build_html(
     sa_news=None,
     sa_analysis=None,
     form4_list=None,
+    xueqiu_posts=None,
     ndq_etf_premiums=None,
     symbol_order=None,
     symbol_to_name=None,
@@ -40,7 +41,7 @@ def build_html(
     candidates=None,
 ):
     """
-    earnings_forward / sa_news / sa_analysis / form4_list:
+    earnings_forward / sa_news / sa_analysis / form4_list / xueqiu_posts:
       若启用雷达评分，每项已 attach grade / why_important / thesis_impact / trigger_hit。
     scorer_result: dict {scored_items, thesis_deltas, candidate_hits}；None 表示未启用雷达
     candidates: 候选 watchlist（用于在 trigger 命中区块展示标的中文名）
@@ -48,6 +49,7 @@ def build_html(
     sa_news = sa_news or []
     sa_analysis = sa_analysis or []
     form4_list = form4_list or []
+    xueqiu_posts = xueqiu_posts or []
     ndq_etf_premiums = ndq_etf_premiums or []
     symbol_to_name = symbol_to_name or {}
     candidates = candidates or []
@@ -66,6 +68,8 @@ def build_html(
             all_items.append({**it, "_kind": "sa_analysis"})
         for it in form4_list:
             all_items.append({**it, "_kind": "form4"})
+        for it in xueqiu_posts:
+            all_items.append({**it, "_kind": "xueqiu_post"})
         parts.append(_render_top_signals(all_items))
         parts.append(_render_candidate_hits(scorer_result.get("candidate_hits") or [], cand_name_map))
         parts.append(_render_thesis_deltas(scorer_result.get("thesis_deltas") or [], symbol_to_name))
@@ -120,6 +124,49 @@ def build_html(
             if i < len(symbol_list) - 1:
                 parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
 
+    # —— 雪球大V最新长文/动态 ——
+    if xueqiu_posts:
+        parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
+        parts.append(f"<h3 style='margin-top:0'>📰 雪球大V最新（{len(xueqiu_posts)} 条）</h3>")
+        # 按作者分组
+        by_author = {}
+        for p in xueqiu_posts:
+            by_author.setdefault(p.get("source", "雪球"), []).append(p)
+        parts.append("<ul style='list-style:none; padding-left:0'>")
+        for author, items in by_author.items():
+            parts.append(f"<li style='margin-bottom:14px'><b>{_escape(author)}</b><ul style='list-style:none; padding-left:1em; margin-top:4px'>")
+            for it in items:
+                grade = it.get("grade")
+                title = it.get("title") or ""
+                url = it.get("url") or ""
+                badge = ""
+                if grade and grade in GRADE_COLOR:
+                    badge = (
+                        f"<span style='display:inline-block;padding:0 6px;margin-right:6px;"
+                        f"border-radius:3px;background:{GRADE_COLOR[grade]};color:#fff;"
+                        f"font-size:0.78em;font-weight:bold'>{grade}</span>"
+                    )
+                tag = "全文" if it.get("is_full_content") else "预览"
+                length = len(it.get("content") or "")
+                head = f"{badge}<a href='{_escape(url)}'>{_escape(title)}</a>" if url else f"{badge}{_escape(title)}"
+                head += f" <span style='color:#999;font-size:0.82em'>[{tag} {length}字 · {_escape(it.get('date_text',''))}]</span>"
+                why = it.get("why_important") or ""
+                impact = it.get("thesis_impact") or ""
+                meta_parts = []
+                if why:
+                    meta_parts.append(f"📝 {_escape(why)}")
+                if impact and impact != "无影响":
+                    meta_parts.append(f"🎯 {_escape(impact)}")
+                meta_html = ""
+                if meta_parts:
+                    meta_html = (
+                        "<div style='color:#444;font-size:0.9em;margin-top:2px'>"
+                        + "<br/>".join(meta_parts) + "</div>"
+                    )
+                parts.append(f"<li style='margin-bottom:8px'>{head}{meta_html}</li>")
+            parts.append("</ul></li>")
+        parts.append("</ul>")
+
     # —— 纳斯达克 ETF 溢价 ——
     if ndq_etf_premiums:
         parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
@@ -165,7 +212,13 @@ def _render_signal_item(it):
     trigger = it.get("trigger_hit") or ""
     kind = it.get("_kind", "")
 
-    head = f"<b>[{_escape(sym)}]</b> "
+    # 没有 symbol 的条目（如雪球大V）用作者/source 当 prefix
+    if sym:
+        head = f"<b>[{_escape(sym)}]</b> "
+    elif it.get("source"):
+        head = f"<b>[{_escape(it['source'])}]</b> "
+    else:
+        head = ""
     if url:
         head += f"<a href='{_escape(url)}'>{_escape(title)}</a>"
     else:

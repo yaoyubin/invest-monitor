@@ -13,6 +13,13 @@ import os
 _project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _project_root)
 
+# macOS 系统 Python 经常缺 root CA，feedparser/urllib 抓 SA 会 SSL_VERIFY_FAILED
+try:
+    import certifi
+    os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+except ImportError:
+    pass
+
 from dotenv import load_dotenv
 load_dotenv(os.path.join(_project_root, ".env"))
 
@@ -21,6 +28,7 @@ from invest_config import (
     get_earnings_stocks,
     get_holdings,
     get_seeking_alpha_tickers,
+    get_xueqiu_kols,
 )
 from invest.dedup import InvestHistoryManager
 from invest.earnings_forward import get_earnings_forward
@@ -30,6 +38,12 @@ from invest.report import build_html
 from invest.sa_rss import fetch_seeking_alpha
 from invest.scorer import attach_grades, score_items
 from tools.email_sender import send_gmail
+
+
+# 是否启用雪球大V抓取（需 Playwright + chrome_profile/ 已登录）
+# 设为 "1" / "true" 启用；建议本地跑设为 1，CI 上保持关闭直到登录态可携带
+ENABLE_XUEQIU = os.getenv("ENABLE_XUEQIU", "0").lower() in ("1", "true", "yes")
+XUEQIU_DAYS_BACK = int(os.getenv("XUEQIU_DAYS_BACK", "7"))
 
 
 def _earnings_forward_id(item):
@@ -82,6 +96,23 @@ def main():
         for item in form4_list:
             history.mark_reported(item["id"])
 
+    # 雪球大V长文（可选；需 ENABLE_XUEQIU=1 + Playwright + chrome_profile/ 已登录）
+    xueqiu_posts = []
+    if ENABLE_XUEQIU:
+        kols = get_xueqiu_kols()
+        if kols:
+            print(f"抓雪球大V（{len(kols)} 人，days={XUEQIU_DAYS_BACK}）...")
+            try:
+                from invest.xueqiu import fetch_kol_posts
+                raw = asyncio.run(fetch_kol_posts(kols, days_back=XUEQIU_DAYS_BACK))
+            except Exception as e:
+                print(f"⚠️ 雪球抓取失败（不影响其他数据源）: {e}")
+                raw = []
+            xueqiu_posts = [p for p in raw if not history.is_reported(p["id"])]
+            for p in xueqiu_posts:
+                history.mark_reported(p["id"])
+            print(f"  → 抓到 {len(raw)} 条，去重后 {len(xueqiu_posts)} 条入库")
+
     # 纳指 ETF 溢价
     print("获取纳斯达克ETF溢价...")
     ndq_etf_premiums = get_ndq_etf_premiums()
@@ -89,15 +120,18 @@ def main():
         print("纳斯达克ETF溢价提醒：" + "；".join(p["code"] + " " + p["premium_str"] for p in ndq_etf_premiums))
 
     # —— 投资雷达评分 ——
+    # 顺序：财报前瞻 → 高管 → 雪球长文 → SA Analysis → SA News（最噪放最后）
     all_items_for_scoring = []
     for it in earnings_forward:
         all_items_for_scoring.append({**it, "_kind": "earnings_forward"})
-    for it in sa_news:
-        all_items_for_scoring.append({**it, "_kind": "sa_news"})
-    for it in sa_analysis:
-        all_items_for_scoring.append({**it, "_kind": "sa_analysis"})
     for it in form4_list:
         all_items_for_scoring.append({**it, "_kind": "form4"})
+    for it in xueqiu_posts:
+        all_items_for_scoring.append({**it, "_kind": "xueqiu_post"})
+    for it in sa_analysis:
+        all_items_for_scoring.append({**it, "_kind": "sa_analysis"})
+    for it in sa_news:
+        all_items_for_scoring.append({**it, "_kind": "sa_news"})
 
     scorer_result = score_items(all_items_for_scoring, holdings, candidates)
     scored_items = scorer_result.get("scored_items", [])
@@ -107,6 +141,7 @@ def main():
     sa_news = attach_grades(sa_news, scored_items)
     sa_analysis = attach_grades(sa_analysis, scored_items)
     form4_list = attach_grades(form4_list, scored_items)
+    xueqiu_posts = attach_grades(xueqiu_posts, scored_items)
 
     # 展示顺序与名称：先 holdings，再 candidates
     earnings_symbols = [h["symbol"] for h in earnings_stocks]
@@ -125,6 +160,7 @@ def main():
         sa_news=sa_news,
         sa_analysis=sa_analysis,
         form4_list=form4_list,
+        xueqiu_posts=xueqiu_posts,
         ndq_etf_premiums=ndq_etf_premiums,
         symbol_order=symbol_order,
         symbol_to_name=symbol_to_name,
@@ -141,7 +177,8 @@ def main():
     if success:
         print(
             f"投资雷达日报已发送：S {s_count} 条 / A {a_count} 条 / 候选触发 {len(hits)} 条 / "
-            f"财报前瞻 {len(earnings_forward)} / SA News {len(sa_news)} / SA Analysis {len(sa_analysis)} / 高管 {len(form4_list)}"
+            f"财报前瞻 {len(earnings_forward)} / SA News {len(sa_news)} / SA Analysis {len(sa_analysis)} / "
+            f"高管 {len(form4_list)} / 雪球 {len(xueqiu_posts)}"
         )
     else:
         print("投资雷达日报发送失败，请检查 Gmail 配置。")

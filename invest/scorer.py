@@ -36,7 +36,7 @@ A 级（60-79）：值得当天看。财报、重大订单、重要高管变动�
 B 级（40-59）：放入低优先级。分析师调价、行业小新闻、普通产品更新
 C 级（<40）：忽略。重复新闻、标题党、小幅波动、无来源传闻
 
-【打分加减分项】
+【打分加减分项】（适用于新闻/财报/高管买卖类 _kind）
 +30 来自公司官方披露 / SEC / HKEX / 财报电话会
 +25 影响 revenue / guidance / margin / capex / product roadmap / customer adoption
 +20 涉及核心 thesis 或 red_flag
@@ -45,6 +45,19 @@ C 级（<40）：忽略。重复新闻、标题党、小幅波动、无来源传
 +5  分析师观点
 -20 社交媒体传闻、未经证实
 -30 重复新闻
+
+【雪球大V长文（_kind=xueqiu_post）特殊评分规则】
+雪球长文是 KOL 个人观点/调研，不是官方披露，"+30 官方披露" 一律不适用。改用以下规则：
++30 给出可验证的一手数据/调研（产业链访谈、终端零售数据、产品体验细节）
++25 论点直接对应某 holding 的 thesis 或 red_flag，并且给了量化判断
++20 命中 candidate 的 revisit_trigger 描述（注意只是"作者认为命中"，要保守）
++10 观点立得住、有逻辑链条而非情绪宣泄
+-10 全文是 100-200 字预览（is_full_content=false 且 content 较短），证据有限
+-20 主要在反驳/回复别人，不构成独立观点
+-30 标题党、玄学、纯抒情或行业大水漫灌评论
+
+雪球内容判定 thesis_impact 时一般只能是"可能增强 X thesis"或"可能削弱 X thesis"，
+而非"增强/削弱"——因为是 KOL 观点不是事实。命中 candidate trigger 也要写"作者认为命中"。
 
 【输出要求】
 1. 严格输出 JSON，不要 markdown 代码块包裹
@@ -102,14 +115,25 @@ def _build_user_prompt(items, holdings, candidates):
 
     items_brief = []
     for it in items:
-        items_brief.append({
+        # 雪球帖子用 content（可能是预览或全文），其他类型用 snippet
+        kind = it.get("_kind")
+        if kind == "xueqiu_post":
+            body = (it.get("content") or "")[:1500]  # 长文截到 1500 字，控制 prompt 大小
+        else:
+            body = (it.get("snippet") or "")[:300]
+        brief = {
             "id": it.get("id"),
             "symbol": it.get("symbol"),
-            "kind": it.get("_kind"),  # earnings_forward / sa_news / sa_analysis / form4
+            "kind": kind,  # earnings_forward / sa_news / sa_analysis / form4 / xueqiu_post
             "title": it.get("title", ""),
-            "snippet": (it.get("snippet") or "")[:300],
+            "snippet": body,
             "url": it.get("url", ""),
-        })
+        }
+        # 雪球补充 source（含作者名）和"是否全文"，让 LLM 衡量证据强度
+        if kind == "xueqiu_post":
+            brief["source"] = it.get("source", "")
+            brief["is_full_content"] = bool(it.get("is_full_content"))
+        items_brief.append(brief)
 
     payload = {
         "holdings": holdings_ctx,
