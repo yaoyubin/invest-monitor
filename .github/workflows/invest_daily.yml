@@ -30,6 +30,12 @@ jobs:
           GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           GMAIL_RECIPIENT: ${{ secrets.GMAIL_RECIPIENT }}
+          # 投资雷达 LLM 评分（无 key 则 scorer 自动 fallback 到全 B 级）
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SCORER_LLM_PROVIDER: anthropic
+          SCORER_LLM_MODEL: claude-sonnet-4-6
+          # 雪球大V抓取保持关闭：CI 上没有 chrome_profile/ 登录态，开了会失败
+          # ENABLE_XUEQIU: '1'
         run: python invest_daily.py
 
       - name: 保存去重记录 (Commit & Push)
