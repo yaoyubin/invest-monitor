@@ -218,12 +218,17 @@ def query_llm(prompt: str, client=None, model=None, provider="openai", image_pat
                     }
                 })
             
-            response = client.messages.create(
+            # 用 streaming：max_tokens 较大时 Anthropic 要求 streaming，
+            # 否则会报 "Streaming is required for operations that may take longer than 10 minutes"
+            buf = []
+            with client.messages.stream(
                 model=model,
-                max_tokens=16384,
-                messages=messages
-            )
-            return response.content[0].text
+                max_tokens=32768,
+                messages=messages,
+            ) as stream:
+                for text in stream.text_stream:
+                    buf.append(text)
+            return "".join(buf)
             
         elif provider == "gemini":
             model = client.GenerativeModel(model)
