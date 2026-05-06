@@ -1,7 +1,16 @@
-# 投资日报
+# 投资雷达
 python-dotenv>=1.0
 feedparser>=6.0
 yfinance>=0.2.40
 requests>=2.28
 beautifulsoup4>=4.12
 lxml>=4.9
+PyYAML>=6.0
+# LLM 评分（按 SCORER_LLM_PROVIDER 选 provider；这两个都装是因为 CI workflow 用 anthropic、
+# 本地/其他场景可能用 openai。其余 provider 按需取消注释）
+openai>=1.0
+anthropic>=0.40
+# google-generativeai>=0.7
+# 雪球大V抓取（可选；invest/xueqiu.py 用）
+# 第一次安装后需执行 `playwright install chromium` 下载浏览器
+playwright>=1.40

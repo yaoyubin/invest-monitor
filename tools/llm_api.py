@@ -1,8 +1,18 @@
 #!/usr/bin/env /workspace/tmp_windsurf/venv/bin/python3
 
-import google.generativeai as genai
-from openai import OpenAI, AzureOpenAI
-from anthropic import Anthropic
+# 各家 SDK 改为可选 import：缺哪个 SDK，对应 provider 才会报错，其他 provider 不受影响
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
+try:
+    from openai import OpenAI, AzureOpenAI
+except ImportError:
+    OpenAI = AzureOpenAI = None
+try:
+    from anthropic import Anthropic
+except ImportError:
+    Anthropic = None
 import argparse
 import os
 from dotenv import load_dotenv
@@ -208,12 +218,17 @@ def query_llm(prompt: str, client=None, model=None, provider="openai", image_pat
                     }
                 })
             
-            response = client.messages.create(
+            # 用 streaming：max_tokens 较大时 Anthropic 要求 streaming，
+            # 否则会报 "Streaming is required for operations that may take longer than 10 minutes"
+            buf = []
+            with client.messages.stream(
                 model=model,
-                max_tokens=1000,
-                messages=messages
-            )
-            return response.content[0].text
+                max_tokens=32768,
+                messages=messages,
+            ) as stream:
+                for text in stream.text_stream:
+                    buf.append(text)
+            return "".join(buf)
             
         elif provider == "gemini":
             model = client.GenerativeModel(model)

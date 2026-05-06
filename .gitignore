@@ -12,6 +12,7 @@ ENV/
 # IDE
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
@@ -31,4 +32,8 @@ history.json
 # 临时文件
 *.log
 *.tmp
+logs/
+scorer_debug/
+# Playwright 持久化登录态（含雪球 cookie，绝对不能上传）
+chrome_profile/
 
