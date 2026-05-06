@@ -6,9 +6,10 @@ requests>=2.28
 beautifulsoup4>=4.12
 lxml>=4.9
 PyYAML>=6.0
-# LLM 评分（任选其一即可，按 SCORER_LLM_PROVIDER 决定使用哪个）
+# LLM 评分（按 SCORER_LLM_PROVIDER 选 provider；这两个都装是因为 CI workflow 用 anthropic、
+# 本地/其他场景可能用 openai。其余 provider 按需取消注释）
 openai>=1.0
-# anthropic>=0.40
+anthropic>=0.40
 # google-generativeai>=0.7
 # 雪球大V抓取（可选；invest/xueqiu.py 用）
 # 第一次安装后需执行 `playwright install chromium` 下载浏览器
