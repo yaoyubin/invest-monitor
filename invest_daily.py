@@ -44,6 +44,9 @@ from tools.email_sender import send_gmail
 # 设为 "1" / "true" 启用；建议本地跑设为 1，CI 上保持关闭直到登录态可携带
 ENABLE_XUEQIU = os.getenv("ENABLE_XUEQIU", "0").lower() in ("1", "true", "yes")
 XUEQIU_DAYS_BACK = int(os.getenv("XUEQIU_DAYS_BACK", "7"))
+# 设了就把 HTML 写到该目录（按日期命名），并跳过 Gmail 发送。
+# 本地 launchd 跑用此模式（不要发邮件）；CI 不设此变量，照旧发邮件
+RADAR_LOCAL_OUTPUT_DIR = os.getenv("RADAR_LOCAL_OUTPUT_DIR")
 
 
 def _earnings_forward_id(item):
@@ -170,18 +173,35 @@ def main():
     today = datetime.date.today().strftime("%Y-%m-%d")
     subject = f"投资雷达日报 · {today}"
 
-    success = asyncio.run(send_gmail(html, subject))
     s_count = sum(1 for s in scored_items if s.get("grade") == "S")
     a_count = sum(1 for s in scored_items if s.get("grade") == "A")
     hits = scorer_result.get("candidate_hits") or []
-    if success:
-        print(
-            f"投资雷达日报已发送：S {s_count} 条 / A {a_count} 条 / 候选触发 {len(hits)} 条 / "
-            f"财报前瞻 {len(earnings_forward)} / SA News {len(sa_news)} / SA Analysis {len(sa_analysis)} / "
-            f"高管 {len(form4_list)} / 雪球 {len(xueqiu_posts)}"
+    summary = (
+        f"S {s_count} 条 / A {a_count} 条 / 候选触发 {len(hits)} 条 / "
+        f"财报前瞻 {len(earnings_forward)} / SA News {len(sa_news)} / "
+        f"SA Analysis {len(sa_analysis)} / 高管 {len(form4_list)} / 雪球 {len(xueqiu_posts)}"
+    )
+
+    if RADAR_LOCAL_OUTPUT_DIR:
+        # 本地模式：写 HTML 到磁盘，不发邮件
+        os.makedirs(RADAR_LOCAL_OUTPUT_DIR, exist_ok=True)
+        out_path = os.path.join(RADAR_LOCAL_OUTPUT_DIR, f"radar_{today}.html")
+        full_html = (
+            "<!doctype html><html><head><meta charset='utf-8'>"
+            "<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;"
+            "max-width:780px;margin:24px auto;padding:0 16px;color:#222;line-height:1.5}</style>"
+            f"</head><body>{html}</body></html>"
         )
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(full_html)
+        print(f"投资雷达日报已写入本地：{out_path} | {summary}")
     else:
-        print("投资雷达日报发送失败，请检查 Gmail 配置。")
+        # 默认模式（含 CI）：发 Gmail
+        success = asyncio.run(send_gmail(html, subject))
+        if success:
+            print(f"投资雷达日报已发送：{summary}")
+        else:
+            print("投资雷达日报发送失败，请检查 Gmail 配置。")
 
     history.save_and_clean()
 
