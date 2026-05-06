@@ -99,12 +99,64 @@ python invest_daily.py
 调整 `watchlist.yaml` 或开发新功能时，用 `dry_run.py` 跑完整 pipeline 但不发 Gmail，HTML 写入 `/tmp/radar_preview.html`：
 
 ```bash
-python dry_run.py             # 不调 LLM（fallback：全部 B 级，thesis delta 全 0）
-python dry_run.py --use-llm   # 调用 LLM 评分（需配置 SCORER_LLM_PROVIDER + key）
-open /tmp/radar_preview.html  # macOS 浏览器预览
+python dry_run.py                                # 不调 LLM（fallback：全部 B 级，thesis delta 全 0）
+python dry_run.py --use-llm                      # 调用 LLM 评分（需配置 SCORER_LLM_PROVIDER + key）
+python dry_run.py --use-llm --include-xueqiu     # 加上雪球大V长文（需先按下面 6. 配置）
+python dry_run.py --use-llm --limit 30           # 只评分前 30 条（调试用，省 token）
+open /tmp/radar_preview.html
 ```
 
-> macOS 系统 Python 若遇 SSL 证书报错，临时设置：`export SSL_CERT_FILE=$(python3 -c 'import certifi;print(certifi.where())')`
+> macOS 系统 Python 的 SSL 证书问题已在代码里自动 fallback 到 `certifi.where()`，不再需要手动 export。
+
+### 6. 雪球大V长文（可选，强烈推荐用于中港股深度分析）
+
+`invest/xueqiu.py` 是独立模块，用 Playwright 启动真浏览器抓取关注列表里大V的最新长文，
+喂给 scorer 一起评分。雪球反爬严，纯 HTTP 走不通，必须走真浏览器。
+
+#### 安装一次
+
+```bash
+pip install playwright
+python -m playwright install chromium    # 下载 ~150MB chromium
+```
+
+#### 首次登录（保留 chrome_profile/，永久免登）
+
+```bash
+python -m invest.xueqiu --login --limit 1
+```
+
+会弹出可见浏览器，请在里面登录雪球，然后回 terminal 按回车。登录态保存在 `chrome_profile/`（已 .gitignore），
+之后 headless 跑就不用再登录。
+
+#### 配置关注的 KOL
+
+编辑 `watchlist.yaml` 的 `xueqiu_kols` 节，可以是裸 uid 列表或 `{uid, name}` 字典：
+
+```yaml
+xueqiu_kols:
+  - {uid: 1965894836, name: 'PaulWu'}
+  - 9405564107
+```
+
+或运行 `python -m invest.xueqiu --names` 自动从主页 title 抓昵称写入 yaml。
+
+#### 单独测试
+
+```bash
+python -m invest.xueqiu --limit 3 --debug                       # 抓前 3 个 KOL，逐条诊断
+python -m invest.xueqiu --limit 5 --out /tmp/xueqiu.json         # 导出 JSON
+python -m invest.xueqiu --uids 1965894836 --days 30              # 指定 uid，30 天窗口
+```
+
+#### 集成进日报
+
+- **dry_run**：加 `--include-xueqiu` 标志
+- **生产（invest_daily.py）**：在 `.env` 设 `ENABLE_XUEQIU=1`（默认关，因为 GitHub Actions 跑时
+  没有 chrome_profile/ 登录态，开了会失败）
+
+每个有 h3 标题的"正式文章"会二次进详情页拿完整正文（700-2000 字），无标题的"长动态"用时间线预览。
+日报输出新增 **📰 雪球大V最新** 区块，按作者分组渲染，命中 thesis 的会同时升到 S/A 级事件区。
 
 ## 邮件输出结构
 
@@ -148,6 +200,7 @@ open /tmp/radar_preview.html  # macOS 浏览器预览
 │   ├── form4.py              # 高管买卖（Finnhub）
 │   ├── sa_rss.py             # Seeking Alpha combined feed
 │   ├── haoetf.py             # 纳指 ETF 溢价
+│   ├── xueqiu.py             # 雪球大V抓取（Playwright，可独立运行）
 │   ├── scorer.py             # LLM 雷达评分（S/A/B/C + thesis delta + trigger）
 │   └── report.py             # HTML 组装（雷达三件套 + 分组列表）
 ├── tools/
