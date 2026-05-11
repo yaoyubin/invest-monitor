@@ -12,6 +12,7 @@
 经典模式（无 scorer_result）保持旧行为：仅输出标题 + 按股票分组 + ETF。
 """
 import datetime
+import re
 
 
 GRADE_COLOR = {
@@ -26,6 +27,19 @@ DELTA_COLOR = {
 }
 
 DELTA_LABEL = {2: "+2", 1: "+1", 0: "0", -1: "-1", -2: "-2"}
+
+# AI 相关关键词（用于雪球帖子分类）
+_AI_KEYWORDS_RE = re.compile(
+    r"人工智能|大模型|大语言模型|AGI|GPT|LLM|DeepSeek|OpenAI|Anthropic|Gemini|Sora|Cursor|算力"
+    r"|\bAI\b",
+    re.IGNORECASE,
+)
+
+
+def _is_ai_related(post: dict) -> bool:
+    """判断雪球帖子是否 AI 相关（标题或正文命中关键词）。"""
+    text = (post.get("title") or "") + " " + (post.get("content") or "")
+    return bool(_AI_KEYWORDS_RE.search(text))
 
 
 def build_html(
@@ -126,46 +140,63 @@ def build_html(
 
     # —— 雪球大V最新长文/动态 ——
     if xueqiu_posts:
+        ai_posts = [p for p in xueqiu_posts if _is_ai_related(p)]
+        other_posts = [p for p in xueqiu_posts if not _is_ai_related(p)]
         parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
         parts.append(f"<h3 style='margin-top:0'>📰 雪球大V最新（{len(xueqiu_posts)} 条）</h3>")
-        # 按作者分组
-        by_author = {}
-        for p in xueqiu_posts:
-            by_author.setdefault(p.get("source", "雪球"), []).append(p)
-        parts.append("<ul style='list-style:none; padding-left:0'>")
-        for author, items in by_author.items():
-            parts.append(f"<li style='margin-bottom:14px'><b>{_escape(author)}</b><ul style='list-style:none; padding-left:1em; margin-top:4px'>")
-            for it in items:
-                grade = it.get("grade")
-                title = it.get("title") or ""
-                url = it.get("url") or ""
-                badge = ""
-                if grade and grade in GRADE_COLOR:
-                    badge = (
-                        f"<span style='display:inline-block;padding:0 6px;margin-right:6px;"
-                        f"border-radius:3px;background:{GRADE_COLOR[grade]};color:#fff;"
-                        f"font-size:0.78em;font-weight:bold'>{grade}</span>"
-                    )
-                tag = "全文" if it.get("is_full_content") else "预览"
-                length = len(it.get("content") or "")
-                head = f"{badge}<a href='{_escape(url)}'>{_escape(title)}</a>" if url else f"{badge}{_escape(title)}"
-                head += f" <span style='color:#999;font-size:0.82em'>[{tag} {length}字 · {_escape(it.get('date_text',''))}]</span>"
-                why = it.get("why_important") or ""
-                impact = it.get("thesis_impact") or ""
-                meta_parts = []
-                if why:
-                    meta_parts.append(f"📝 {_escape(why)}")
-                if impact and impact != "无影响":
-                    meta_parts.append(f"🎯 {_escape(impact)}")
-                meta_html = ""
-                if meta_parts:
-                    meta_html = (
-                        "<div style='color:#444;font-size:0.9em;margin-top:2px'>"
-                        + "<br/>".join(meta_parts) + "</div>"
-                    )
-                parts.append(f"<li style='margin-bottom:8px'>{head}{meta_html}</li>")
-            parts.append("</ul></li>")
-        parts.append("</ul>")
+        for section_posts, section_label in (
+            (ai_posts, "🤖 AI 相关"),
+            (other_posts, "其余"),
+        ):
+            if not section_posts:
+                continue
+            if ai_posts and other_posts:
+                # 只有两类都有时才加子标题
+                parts.append(
+                    f"<p style='margin:12px 0 4px;font-weight:bold;color:#555'>"
+                    f"{section_label}（{len(section_posts)} 条）</p>"
+                )
+            # 按作者分组
+            by_author: dict = {}
+            for p in section_posts:
+                by_author.setdefault(p.get("source", "雪球"), []).append(p)
+            parts.append("<ul style='list-style:none; padding-left:0'>")
+            for author, items in by_author.items():
+                parts.append(
+                    f"<li style='margin-bottom:14px'><b>{_escape(author)}</b>"
+                    f"<ul style='list-style:none; padding-left:1em; margin-top:4px'>"
+                )
+                for it in items:
+                    grade = it.get("grade")
+                    title = it.get("title") or ""
+                    url = it.get("url") or ""
+                    badge = ""
+                    if grade and grade in GRADE_COLOR:
+                        badge = (
+                            f"<span style='display:inline-block;padding:0 6px;margin-right:6px;"
+                            f"border-radius:3px;background:{GRADE_COLOR[grade]};color:#fff;"
+                            f"font-size:0.78em;font-weight:bold'>{grade}</span>"
+                        )
+                    tag = "全文" if it.get("is_full_content") else "预览"
+                    length = len(it.get("content") or "")
+                    head = f"{badge}<a href='{_escape(url)}'>{_escape(title)}</a>" if url else f"{badge}{_escape(title)}"
+                    head += f" <span style='color:#999;font-size:0.82em'>[{tag} {length}字 · {_escape(it.get('date_text',''))}]</span>"
+                    why = it.get("why_important") or ""
+                    impact = it.get("thesis_impact") or ""
+                    meta_parts = []
+                    if why:
+                        meta_parts.append(f"📝 {_escape(why)}")
+                    if impact and impact != "无影响":
+                        meta_parts.append(f"🎯 {_escape(impact)}")
+                    meta_html = ""
+                    if meta_parts:
+                        meta_html = (
+                            "<div style='color:#444;font-size:0.9em;margin-top:2px'>"
+                            + "<br/>".join(meta_parts) + "</div>"
+                        )
+                    parts.append(f"<li style='margin-bottom:8px'>{head}{meta_html}</li>")
+                parts.append("</ul></li>")
+            parts.append("</ul>")
 
     # —— 纳斯达克 ETF 溢价 ——
     if ndq_etf_premiums:
