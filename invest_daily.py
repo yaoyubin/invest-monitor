@@ -29,6 +29,7 @@ from invest_config import (
     get_holdings,
     get_seeking_alpha_tickers,
     get_xueqiu_kols,
+    get_youtube_creators,
 )
 from invest.dedup import InvestHistoryManager
 from invest.earnings_forward import get_earnings_forward
@@ -44,6 +45,9 @@ from tools.email_sender import send_gmail
 # 设为 "1" / "true" 启用；建议本地跑设为 1，CI 上保持关闭直到登录态可携带
 ENABLE_XUEQIU = os.getenv("ENABLE_XUEQIU", "0").lower() in ("1", "true", "yes")
 XUEQIU_DAYS_BACK = int(os.getenv("XUEQIU_DAYS_BACK", "7"))
+# YouTube 默认开启（不像雪球需要 Playwright，CI 也能跑；要关只需 watchlist 清空 youtube_creators）
+ENABLE_YOUTUBE = os.getenv("ENABLE_YOUTUBE", "1").lower() in ("1", "true", "yes")
+YOUTUBE_DAYS_BACK = int(os.getenv("YOUTUBE_DAYS_BACK", "2"))
 # 设了就把 HTML 写到该目录（按日期命名），并跳过 Gmail 发送。
 # 本地 launchd 跑用此模式（不要发邮件）；CI 不设此变量，照旧发邮件
 RADAR_LOCAL_OUTPUT_DIR = os.getenv("RADAR_LOCAL_OUTPUT_DIR")
@@ -116,6 +120,24 @@ def main():
                 history.mark_reported(p["id"])
             print(f"  → 抓到 {len(raw)} 条，去重后 {len(xueqiu_posts)} 条入库")
 
+    # YouTube 财经 UP 主视频总结（默认开启）
+    youtube_videos = []
+    if ENABLE_YOUTUBE:
+        creators = get_youtube_creators()
+        if creators:
+            print(f"抓 YouTube UP 主（{len(creators)} 人，days={YOUTUBE_DAYS_BACK}）...")
+            try:
+                from invest.youtube import fetch_youtube_summaries
+                youtube_videos = asyncio.run(
+                    fetch_youtube_summaries(creators, days_back=YOUTUBE_DAYS_BACK, history=history)
+                )
+                for v in youtube_videos:
+                    history.mark_reported(v["id"])
+            except Exception as e:
+                print(f"⚠️ YouTube 抓取失败（不影响其他数据源）: {e}")
+                youtube_videos = []
+            print(f"  → 保留 {len(youtube_videos)} 条相关视频入库")
+
     # 纳指 ETF 溢价
     print("获取纳斯达克ETF溢价...")
     ndq_etf_premiums = get_ndq_etf_premiums()
@@ -123,12 +145,14 @@ def main():
         print("纳斯达克ETF溢价提醒：" + "；".join(p["code"] + " " + p["premium_str"] for p in ndq_etf_premiums))
 
     # —— 投资雷达评分 ——
-    # 顺序：财报前瞻 → 高管 → 雪球长文 → SA Analysis → SA News（最噪放最后）
+    # 顺序：财报前瞻 → 高管 → YouTube → 雪球长文 → SA Analysis → SA News（最噪放最后）
     all_items_for_scoring = []
     for it in earnings_forward:
         all_items_for_scoring.append({**it, "_kind": "earnings_forward"})
     for it in form4_list:
         all_items_for_scoring.append({**it, "_kind": "form4"})
+    for it in youtube_videos:
+        all_items_for_scoring.append({**it, "_kind": "youtube_video"})
     for it in xueqiu_posts:
         all_items_for_scoring.append({**it, "_kind": "xueqiu_post"})
     for it in sa_analysis:
@@ -145,6 +169,7 @@ def main():
     sa_analysis = attach_grades(sa_analysis, scored_items)
     form4_list = attach_grades(form4_list, scored_items)
     xueqiu_posts = attach_grades(xueqiu_posts, scored_items)
+    youtube_videos = attach_grades(youtube_videos, scored_items)
 
     # 展示顺序与名称：先 holdings，再 candidates
     earnings_symbols = [h["symbol"] for h in earnings_stocks]
@@ -164,6 +189,7 @@ def main():
         sa_analysis=sa_analysis,
         form4_list=form4_list,
         xueqiu_posts=xueqiu_posts,
+        youtube_videos=youtube_videos,
         ndq_etf_premiums=ndq_etf_premiums,
         symbol_order=symbol_order,
         symbol_to_name=symbol_to_name,
@@ -179,7 +205,8 @@ def main():
     summary = (
         f"S {s_count} 条 / A {a_count} 条 / 候选触发 {len(hits)} 条 / "
         f"财报前瞻 {len(earnings_forward)} / SA News {len(sa_news)} / "
-        f"SA Analysis {len(sa_analysis)} / 高管 {len(form4_list)} / 雪球 {len(xueqiu_posts)}"
+        f"SA Analysis {len(sa_analysis)} / 高管 {len(form4_list)} / "
+        f"雪球 {len(xueqiu_posts)} / YouTube {len(youtube_videos)}"
     )
 
     if RADAR_LOCAL_OUTPUT_DIR:

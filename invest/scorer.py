@@ -59,6 +59,22 @@ C 级（<40）：忽略。重复新闻、标题党、小幅波动、无来源传
 雪球内容判定 thesis_impact 时一般只能是"可能增强 X thesis"或"可能削弱 X thesis"，
 而非"增强/削弱"——因为是 KOL 观点不是事实。命中 candidate trigger 也要写"作者认为命中"。
 
+【YouTube 财经 UP 主视频（_kind=youtube_video）特殊评分规则】
+snippet 字段已经是 LLM 在抓取阶段对字幕的 ~500 字总结，UP 主的核心观点已浓缩。
+评分规则类似雪球长文（KOL 观点，非官方）：
++25 总结里明确给出量化数据 / 一手访谈 / 产业链信息
++25 涉及标的（stocks_mentioned）和 holding/candidate 有交集且观点明确
++20 命中 candidate 的 revisit_trigger
++10 论点完整、逻辑清晰
+-15 标的提及但只是带过，没有针对性分析
+-20 主要是宏观闲聊 / 段子 / 旅游内容（虽然过滤过但偶有漏网）
+-30 纯娱乐 / 软广 / 没有任何投资价值
+
+stocks_mentioned 字段已由 LLM 抓取阶段提取，是 UP 主提到的标的清单（如 ['AMD','TSLA']），
+可用来快速比对是否涉及 holdings/candidates。
+
+thesis_impact 同样用"可能增强/削弱 X thesis"措辞，candidate trigger 命中要写"UP主认为/暗示命中"。
+
 【输出要求】
 1. 严格输出 JSON，不要 markdown 代码块包裹
 2. 中文
@@ -115,24 +131,31 @@ def _build_user_prompt(items, holdings, candidates):
 
     items_brief = []
     for it in items:
-        # 雪球帖子用 content（可能是预览或全文），其他类型用 snippet
+        # 不同 kind 用不同的正文字段
         kind = it.get("_kind")
         if kind == "xueqiu_post":
-            body = (it.get("content") or "")[:1500]  # 长文截到 1500 字，控制 prompt 大小
+            body = (it.get("content") or "")[:1500]
+        elif kind == "youtube_video":
+            # YouTube 视频用 LLM 已经压缩过的 summary（约 500-700 字），直接送评分
+            body = (it.get("summary") or "")[:1500]
         else:
             body = (it.get("snippet") or "")[:300]
         brief = {
             "id": it.get("id"),
             "symbol": it.get("symbol"),
-            "kind": kind,  # earnings_forward / sa_news / sa_analysis / form4 / xueqiu_post
+            "kind": kind,  # earnings_forward / sa_news / sa_analysis / form4 / xueqiu_post / youtube_video
             "title": it.get("title", ""),
             "snippet": body,
             "url": it.get("url", ""),
         }
-        # 雪球补充 source（含作者名）和"是否全文"，让 LLM 衡量证据强度
         if kind == "xueqiu_post":
             brief["source"] = it.get("source", "")
             brief["is_full_content"] = bool(it.get("is_full_content"))
+        elif kind == "youtube_video":
+            brief["source"] = it.get("source", "") or f"YouTube ({it.get('channel','')})"
+            # 把视频里 LLM 提取出的标的列表带上，scorer 判 thesis 相关性时更准
+            brief["stocks_mentioned"] = it.get("stocks_mentioned") or []
+            brief["duration_seconds"] = it.get("duration_seconds") or 0
         items_brief.append(brief)
 
     payload = {

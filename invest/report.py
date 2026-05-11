@@ -48,6 +48,7 @@ def build_html(
     sa_analysis=None,
     form4_list=None,
     xueqiu_posts=None,
+    youtube_videos=None,
     ndq_etf_premiums=None,
     symbol_order=None,
     symbol_to_name=None,
@@ -55,7 +56,7 @@ def build_html(
     candidates=None,
 ):
     """
-    earnings_forward / sa_news / sa_analysis / form4_list / xueqiu_posts:
+    earnings_forward / sa_news / sa_analysis / form4_list / xueqiu_posts / youtube_videos:
       若启用雷达评分，每项已 attach grade / why_important / thesis_impact / trigger_hit。
     scorer_result: dict {scored_items, thesis_deltas, candidate_hits}；None 表示未启用雷达
     candidates: 候选 watchlist（用于在 trigger 命中区块展示标的中文名）
@@ -64,6 +65,7 @@ def build_html(
     sa_analysis = sa_analysis or []
     form4_list = form4_list or []
     xueqiu_posts = xueqiu_posts or []
+    youtube_videos = youtube_videos or []
     ndq_etf_premiums = ndq_etf_premiums or []
     symbol_to_name = symbol_to_name or {}
     candidates = candidates or []
@@ -84,6 +86,8 @@ def build_html(
             all_items.append({**it, "_kind": "form4"})
         for it in xueqiu_posts:
             all_items.append({**it, "_kind": "xueqiu_post"})
+        for it in youtube_videos:
+            all_items.append({**it, "_kind": "youtube_video"})
         parts.append(_render_top_signals(all_items))
         parts.append(_render_candidate_hits(scorer_result.get("candidate_hits") or [], cand_name_map))
         parts.append(_render_thesis_deltas(scorer_result.get("thesis_deltas") or [], symbol_to_name))
@@ -197,6 +201,69 @@ def build_html(
                     parts.append(f"<li style='margin-bottom:8px'>{head}{meta_html}</li>")
                 parts.append("</ul></li>")
             parts.append("</ul>")
+
+    # —— YouTube 财经 UP 主视频总结 ——
+    if youtube_videos:
+        parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
+        parts.append(f"<h3 style='margin-top:0'>🎥 YouTube 财经 UP 主（{len(youtube_videos)} 条）</h3>")
+        # 按频道分组
+        by_channel: dict = {}
+        for v in youtube_videos:
+            by_channel.setdefault(v.get("channel") or "未知", []).append(v)
+        parts.append("<ul style='list-style:none; padding-left:0'>")
+        for channel, items in by_channel.items():
+            parts.append(
+                f"<li style='margin-bottom:14px'><b>{_escape(channel)}</b>"
+                f"<ul style='list-style:none; padding-left:1em; margin-top:4px'>"
+            )
+            for v in items:
+                grade = v.get("grade")
+                title = v.get("title") or ""
+                url = v.get("url") or ""
+                badge = ""
+                if grade and grade in GRADE_COLOR:
+                    badge = (
+                        f"<span style='display:inline-block;padding:0 6px;margin-right:6px;"
+                        f"border-radius:3px;background:{GRADE_COLOR[grade]};color:#fff;"
+                        f"font-size:0.78em;font-weight:bold'>{grade}</span>"
+                    )
+                duration_s = v.get("duration_seconds") or 0
+                dur_str = f"{duration_s // 60}分{duration_s % 60}秒" if duration_s else ""
+                summary = v.get("summary") or ""
+                stocks = v.get("stocks_mentioned") or []
+                head = (
+                    f"{badge}<a href='{_escape(url)}'>{_escape(title)}</a>"
+                    if url else f"{badge}{_escape(title)}"
+                )
+                head += f" <span style='color:#999;font-size:0.82em'>[{_escape(dur_str)}]</span>"
+                if stocks:
+                    stocks_str = ", ".join(stocks[:8])
+                    head += f"<br/><span style='color:#666;font-size:0.85em'>涉及标的：{_escape(stocks_str)}</span>"
+                # 总结正文（可点击的 details 折叠，避免视觉爆炸）
+                summary_html = (
+                    f"<details style='margin-top:4px'>"
+                    f"<summary style='cursor:pointer;color:#444;font-size:0.9em'>📝 核心观点总结（{len(summary)}字）</summary>"
+                    f"<div style='color:#333;font-size:0.92em;margin-top:6px;padding:8px 12px;"
+                    f"background:#f5f5f5;border-left:3px solid #ccc;white-space:pre-wrap'>{_escape(summary)}</div>"
+                    f"</details>"
+                )
+                # scorer 给出的 why / impact
+                why = v.get("why_important") or ""
+                impact = v.get("thesis_impact") or ""
+                meta_parts = []
+                if why:
+                    meta_parts.append(f"🧭 {_escape(why)}")
+                if impact and impact != "无影响":
+                    meta_parts.append(f"🎯 {_escape(impact)}")
+                meta_html = ""
+                if meta_parts:
+                    meta_html = (
+                        f"<div style='color:#444;font-size:0.88em;margin-top:3px'>"
+                        + "<br/>".join(meta_parts) + "</div>"
+                    )
+                parts.append(f"<li style='margin-bottom:10px'>{head}{meta_html}{summary_html}</li>")
+            parts.append("</ul></li>")
+        parts.append("</ul>")
 
     # —— 纳斯达克 ETF 溢价 ——
     if ndq_etf_premiums:

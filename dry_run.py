@@ -33,6 +33,7 @@ from invest_config import (
     get_holdings,
     get_seeking_alpha_tickers,
     get_xueqiu_kols,
+    get_youtube_creators,
 )
 from invest.dedup import InvestHistoryManager
 from invest.earnings_forward import get_earnings_forward
@@ -57,6 +58,10 @@ def main():
     ap.add_argument("--xueqiu-days", type=int, default=7, help="雪球只抓最近这些天的帖子（默认 7；KOL 多数不每天发文，配合 dedup 避免重复评分）")
     ap.add_argument("--xueqiu-limit-kols", type=int, default=0,
                     help="只抓前 N 个 KOL（0=全部）；调试用")
+    ap.add_argument("--include-youtube", action="store_true",
+                    help="启用 YouTube 财经 UP 主视频抓取 + LLM 总结")
+    ap.add_argument("--youtube-days", type=int, default=2,
+                    help="YouTube 只抓最近这些天的视频（默认 2，配合 dedup 避免重复）")
     args = ap.parse_args()
 
     if not args.use_llm:
@@ -130,22 +135,42 @@ def main():
                 history.mark_reported(p["id"])
             print(f"  → 抓到 {len(raw)} 条，去重后 {len(xueqiu_posts)} 条入库")
 
+    # YouTube 财经 UP 主视频总结（可选）
+    youtube_videos = []
+    if args.include_youtube:
+        creators = get_youtube_creators()
+        if creators:
+            print(f"抓 YouTube UP 主（{len(creators)} 人，days={args.youtube_days}）...")
+            from invest.youtube import fetch_youtube_summaries
+            try:
+                youtube_videos = asyncio.run(
+                    fetch_youtube_summaries(creators, days_back=args.youtube_days, history=history)
+                )
+                for v in youtube_videos:
+                    history.mark_reported(v["id"])
+            except Exception as e:
+                print(f"⚠️ YouTube 抓取失败: {e}")
+                youtube_videos = []
+            print(f"  → 保留 {len(youtube_videos)} 条相关视频入库")
+
     print("获取纳指 ETF 溢价...")
     ndq_etf_premiums = get_ndq_etf_premiums()
 
     print(
         f"抓取结果：earnings={len(earnings_forward)}, sa_news={len(sa_news)}, "
         f"sa_analysis={len(sa_analysis)}, form4={len(form4_list)}, "
-        f"xueqiu={len(xueqiu_posts)}, etf={len(ndq_etf_premiums)}"
+        f"xueqiu={len(xueqiu_posts)}, youtube={len(youtube_videos)}, etf={len(ndq_etf_premiums)}"
     )
 
     # 评分顺序（信号密度从高到低，--limit 切掉时损失最小）：
-    # 财报前瞻 → 高管买卖 → 雪球长文 → SA Analysis → SA News
+    # 财报前瞻 → 高管买卖 → YouTube → 雪球长文 → SA Analysis → SA News
     items_for_scoring = []
     for it in earnings_forward:
         items_for_scoring.append({**it, "_kind": "earnings_forward"})
     for it in form4_list:
         items_for_scoring.append({**it, "_kind": "form4"})
+    for it in youtube_videos:
+        items_for_scoring.append({**it, "_kind": "youtube_video"})
     for it in xueqiu_posts:
         items_for_scoring.append({**it, "_kind": "xueqiu_post"})
     for it in sa_analysis:
@@ -162,6 +187,7 @@ def main():
         sa_analysis = [it for it in sa_analysis if it.get("id") in kept_ids]
         form4_list = [it for it in form4_list if it.get("id") in kept_ids]
         xueqiu_posts = [it for it in xueqiu_posts if it.get("id") in kept_ids]
+        youtube_videos = [it for it in youtube_videos if it.get("id") in kept_ids]
 
     scorer_result = score_items(items_for_scoring, holdings, candidates)
     scored = scorer_result["scored_items"]
@@ -180,6 +206,7 @@ def main():
     sa_analysis = attach_grades(sa_analysis, scored)
     form4_list = attach_grades(form4_list, scored)
     xueqiu_posts = attach_grades(xueqiu_posts, scored)
+    youtube_videos = attach_grades(youtube_videos, scored)
 
     earnings_symbols = [h["symbol"] for h in earnings_stocks]
     sa_only = [t for t in sa_tickers if t not in set(earnings_symbols)]
@@ -198,6 +225,7 @@ def main():
         sa_analysis=sa_analysis,
         form4_list=form4_list,
         xueqiu_posts=xueqiu_posts,
+        youtube_videos=youtube_videos,
         ndq_etf_premiums=ndq_etf_premiums,
         symbol_order=symbol_order,
         symbol_to_name=symbol_to_name,
