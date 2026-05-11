@@ -77,6 +77,9 @@ TRANSCRIPT_LANGS = ["zh-Hans", "zh-Hant", "zh-CN", "zh-TW", "zh", "en", "en-US"]
 SUMMARIZER_PROVIDER = os.getenv("SCORER_LLM_PROVIDER", "anthropic")
 SUMMARIZER_MODEL = os.getenv("SCORER_LLM_MODEL")
 
+# 字幕被禁时的 fallback：Gemini 直接读 YouTube URL
+GEMINI_MODEL = os.getenv("YOUTUBE_GEMINI_MODEL", "gemini-2.5-flash")
+
 # 单视频字幕送 LLM 的最大字符数（中文约等于 token 数）
 MAX_TRANSCRIPT_CHARS = 8000
 
@@ -310,6 +313,75 @@ def summarize_video(title: str, channel_name: str, duration_seconds: Optional[in
     return parsed
 
 
+# ===== 字幕禁用时的 fallback：Gemini 直接读 YouTube URL =====
+
+GEMINI_VIDEO_PROMPT = """这是 YouTube 频道「{channel}」的视频「{title}」。请基于视频音频和画面内容：
+1. 判断是否与"财经/投资/AI"相关
+   - 财经：股票/基金/外汇/宏观/通胀/利率/财报/公司点评/投资策略
+   - AI：人工智能技术/AI 公司动态/AI 对行业/经济的影响
+2. 如相关，用中文总结其核心观点（≤500 字）
+   - 抓 UP 主的核心观点和论据，不要复述时间线
+   - 涉及具体股票/标的时显式列出
+   - 保留关键数字
+   - 不要写"UP主认为..."这种废话引导词，直接陈述
+3. 列出涉及的具体股票/标的（用美股 ticker 或港股代码，中文公司名转换，如腾讯→TCEHY）
+
+严格 JSON 输出（不要 markdown 代码块包裹）：
+{{"is_relevant": true|false, "reason": "<30字>", "summary": "<≤500字；不相关填空字符串>", "stocks_mentioned": []}}
+"""
+
+
+def summarize_video_via_gemini(video_url: str, channel_name: str, title: str,
+                                debug: bool = False) -> Optional[dict]:
+    """字幕禁用时的 fallback：Gemini 2.5 Flash 直接读 YouTube URL 总结。"""
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        if debug:
+            print(f"  [debug] 没配 GOOGLE_API_KEY，无法 Gemini fallback", file=sys.stderr)
+        return None
+    try:
+        from google import genai
+        from google.genai import types
+    except ImportError:
+        print("⚠️ 未安装 google-genai，请: pip install google-genai", file=sys.stderr)
+        return None
+
+    client = genai.Client(api_key=api_key)
+    prompt = GEMINI_VIDEO_PROMPT.format(channel=channel_name, title=title)
+
+    try:
+        r = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=types.Content(parts=[
+                types.Part(file_data=types.FileData(file_uri=video_url, mime_type="video/*")),
+                types.Part(text=prompt),
+            ]),
+        )
+        text = (r.text or "").strip()
+    except Exception as e:
+        print(f"  ⚠️ Gemini 视频解析失败 ({title[:30]}): {e}", file=sys.stderr)
+        return None
+
+    if not text:
+        return None
+
+    # 容错 JSON 解析（剥 markdown 包裹）
+    if text.startswith("```"):
+        text = re.sub(r"^```\w*\n?|\n?```\s*$", "", text, flags=re.MULTILINE).strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        m = re.search(r"\{.*\}", text, flags=re.DOTALL)
+        if not m:
+            if debug:
+                print(f"  [debug] Gemini 输出无法解析为 JSON，前 200 字: {text[:200]}", file=sys.stderr)
+            return None
+        try:
+            return json.loads(m.group(0))
+        except Exception:
+            return None
+
+
 # ===== 关键词预过滤 =====
 
 def title_or_desc_has_keyword(title: str, description: str = "") -> bool:
@@ -381,19 +453,23 @@ async def fetch_youtube_summaries(
                     print(f"  [debug] 关键词未命中：{v['title'][:40]}", file=sys.stderr)
                 continue
 
-            # 2. 字幕
+            # 2. 字幕 + 时长
             transcript = get_transcript(vid)
-            if not transcript:
-                if debug:
-                    print(f"  [debug] 无字幕：{v['title'][:40]}", file=sys.stderr)
-                continue
-
-            # 3. 时长
             duration = get_duration_seconds(vid)
 
-            # 4. LLM 判定相关性 + 总结
-            result = summarize_video(v["title"], name, duration, transcript, debug=debug)
+            # 3. 总结（先走 Anthropic 总结字幕；字幕禁了/缺了再 fallback Gemini 直读视频）
+            via_gemini = False
+            if transcript:
+                result = summarize_video(v["title"], name, duration, transcript, debug=debug)
+            else:
+                if debug:
+                    print(f"  [debug] 无字幕，尝试 Gemini fallback：{v['title'][:40]}", file=sys.stderr)
+                result = summarize_video_via_gemini(v["url"], name, v["title"], debug=debug)
+                via_gemini = True
+
             if not result:
+                if debug:
+                    print(f"  [debug] 两路总结都失败：{v['title'][:40]}", file=sys.stderr)
                 continue
             if not result.get("is_relevant"):
                 if debug:
@@ -415,12 +491,14 @@ async def fetch_youtube_summaries(
                 "summary": summary,
                 "is_relevant_reason": result.get("reason", ""),
                 "stocks_mentioned": result.get("stocks_mentioned") or [],
+                "summarized_by": "gemini" if via_gemini else "anthropic",
                 "source": f"YouTube ({name})",
                 "_kind": "youtube_video",
             }
             out.append(item)
             kept_for_channel += 1
-            print(f"  ✅ [{name}] {v['title'][:50]}  ({len(summary)}字总结)")
+            tag = "🤖Gemini" if via_gemini else "📝字幕"
+            print(f"  ✅ [{name}] {tag} {v['title'][:50]}  ({len(summary)}字)")
 
         print(f"  [{name}] 保留 {kept_for_channel} 个视频")
 

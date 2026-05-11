@@ -163,6 +163,6 @@ xueqiu_kols:
 # 格式：- {handle: ..., name: 中文名, channel_id: UC...}
 # channel_id 留空首次运行会自动解析并回填（可手动跑：python -m invest.youtube --resolve）
 youtube_creators:
-  - {handle: bellafinance, name: '贝乐财经', channel_id: UC_vQCI0Dczas9QsmlYm_6Rw}
+  - {handle: bellafinance, name: '贝拉聊财金', channel_id: UCVomjkM_t0EcctTWSE1Jvxg}
   - {handle: hackbearterry, name: 'Terry', channel_id: UC_whOg3XES3Fihic53fvo4Q}
 

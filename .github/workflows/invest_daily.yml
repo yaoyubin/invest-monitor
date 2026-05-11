@@ -36,6 +36,8 @@ jobs:
           SCORER_LLM_MODEL: claude-sonnet-4-6
           # 雪球大V抓取保持关闭：CI 上没有 chrome_profile/ 登录态，开了会失败
           # ENABLE_XUEQIU: '1'
+          # YouTube 默认开启；字幕禁用的视频用 Gemini 2.5 Flash 直读 fallback
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
         run: python invest_daily.py
 
       - name: 保存去重记录 (Commit & Push)
