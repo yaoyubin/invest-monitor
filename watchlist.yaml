@@ -158,3 +158,11 @@ xueqiu_kols:
   - {uid: 4111857140, name: '山行'}
   - {uid: 5819606767, name: 'DAVID自由之路'}
   - {uid: 8510627167, name: '进化论一平'}
+
+# YouTube 财经 UP 主：每日抓最近视频字幕，LLM 总结后送 scorer
+# 格式：- {handle: ..., name: 中文名, channel_id: UC...}
+# channel_id 留空首次运行会自动解析并回填（可手动跑：python -m invest.youtube --resolve）
+youtube_creators:
+  - {handle: bellafinance, name: '贝乐财经', channel_id: UC_vQCI0Dczas9QsmlYm_6Rw}
+  - {handle: hackbearterry, name: 'Terry', channel_id: UC_whOg3XES3Fihic53fvo4Q}
+

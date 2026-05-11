@@ -126,3 +126,31 @@ def get_xueqiu_kols():
         else:
             out.append({"uid": str(item), "name": str(item)})
     return out
+
+
+def get_youtube_creators():
+    """YouTube 财经 UP 主列表。从 watchlist.yaml 的 youtube_creators 节读取。
+
+    返回 [{handle, name, channel_id?}, ...]。channel_id 可选，
+    没填的话 invest/youtube.py 会在运行时从 handle 解析。
+    """
+    data = _load_watchlist()
+    if data is None:
+        return []
+    raw = data.get("youtube_creators") or []
+    out = []
+    for item in raw:
+        if isinstance(item, dict):
+            handle = item.get("handle") or item.get("name")
+            if not handle:
+                continue
+            out.append({
+                "handle": str(handle).lstrip("@"),
+                "name": item.get("name") or str(handle),
+                "channel_id": item.get("channel_id") or "",
+            })
+        else:
+            # 裸字符串当 handle
+            h = str(item).lstrip("@")
+            out.append({"handle": h, "name": h, "channel_id": ""})
+    return out
