@@ -93,18 +93,57 @@ def _hash_id(s: str) -> str:
     return hashlib.sha256((s or "").encode("utf-8")).hexdigest()
 
 
-def _http_get(url: str, timeout: int = 15) -> str:
-    """简单 HTTP GET，带常见 UA。"""
-    req = urllib.request.Request(
-        url,
-        headers={
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) "
-                          "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
-            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-        },
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read().decode("utf-8", errors="replace")
+_UA_POOL = [
+    # Mac Safari
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 "
+    "(KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+    # Linux Chrome（CI runner 是 Ubuntu，给 YouTube 一个"本地"看起来的 UA）
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    # Windows Chrome（兜底）
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+]
+
+
+def _http_get(url: str, timeout: int = 15, max_retries: int = 3) -> str:
+    """简单 HTTP GET，带 UA 轮换 + 重试。
+
+    YouTube 偶尔对数据中心 IP（如 GitHub Actions runner）返回 404，
+    切换 UA 通常能绕过。
+    """
+    import time
+    last_err = None
+    for attempt in range(max_retries):
+        ua = _UA_POOL[attempt % len(_UA_POOL)]
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": ua,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+                "Accept-Encoding": "identity",  # 不要 gzip，避免 urllib 解码问题
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as e:
+            last_err = e
+            if e.code == 404 and attempt < max_retries - 1:
+                # YouTube 对 DC IP 的 404 通常是反爬，换 UA 重试
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            raise
+        except Exception as e:
+            last_err = e
+            if attempt < max_retries - 1:
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            raise
+    if last_err:
+        raise last_err
+    raise RuntimeError("unreachable")
 
 
 # ===== Channel ID 解析 =====
@@ -132,49 +171,166 @@ def resolve_channel_id(handle: str) -> Optional[str]:
     return None
 
 
-# ===== RSS 取最近视频 =====
+# ===== 解析 channel 主页拿最近视频 =====
+# 注：YouTube 在 2026 年 5 月把 RSS 端点 (feeds/videos.xml) 改成 404，
+# 改从 /channel/{id}/videos 页面里的 ytInitialData JSON 解析 lockupViewModel。
 
-def fetch_recent_videos(channel_id: str, days_back: int = 2) -> List[dict]:
-    """从 YouTube RSS 取 channel 最近的视频条目。
+_RELATIVE_TIME_PATTERNS = [
+    # "N minute(s) ago" / "N 分钟前"
+    (re.compile(r"(\d+)\s*(minute|min|分钟|分)"), "minutes"),
+    # "N hour(s) ago" / "N 小时前"
+    (re.compile(r"(\d+)\s*(hour|hr|小时)"), "hours"),
+    # "N day(s) ago" / "N 天前"
+    (re.compile(r"(\d+)\s*(day|天)"), "days"),
+    # "N week(s) ago" / "N 周前"
+    (re.compile(r"(\d+)\s*(week|周)"), "weeks"),
+    # "N month(s) ago" / "N 个月前"
+    (re.compile(r"(\d+)\s*(month|个月|月)"), "months"),
+    # "N year(s) ago" / "N 年前"
+    (re.compile(r"(\d+)\s*(year|年)"), "years"),
+]
 
-    返回 [{video_id, url, title, published_at(datetime), description?}, ...]
-    按 published_at 倒序，过滤掉 days_back 之外的。
-    """
-    rss_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
+
+def _parse_relative_time(text: str, now: Optional[datetime.datetime] = None) -> Optional[datetime.datetime]:
+    """把 '2 hours ago' / '1 day ago' / '3 天前' 转成 datetime（UTC）。"""
+    if not text:
+        return None
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    for pat, unit in _RELATIVE_TIME_PATTERNS:
+        m = pat.search(text)
+        if m:
+            n = int(m.group(1))
+            if unit == "minutes":
+                return now - datetime.timedelta(minutes=n)
+            if unit == "hours":
+                return now - datetime.timedelta(hours=n)
+            if unit == "days":
+                return now - datetime.timedelta(days=n)
+            if unit == "weeks":
+                return now - datetime.timedelta(weeks=n)
+            if unit == "months":
+                return now - datetime.timedelta(days=n * 30)
+            if unit == "years":
+                return now - datetime.timedelta(days=n * 365)
+    return None
+
+
+def _parse_duration_text(text: str) -> Optional[int]:
+    """'13:14' / '1:02:30' 转秒数。"""
+    if not text:
+        return None
+    parts = text.strip().split(":")
     try:
-        xml = _http_get(rss_url)
-    except Exception as e:
-        print(f"  ⚠️  抓 RSS 失败 ({channel_id}): {e}", file=sys.stderr)
+        if len(parts) == 2:
+            return int(parts[0]) * 60 + int(parts[1])
+        if len(parts) == 3:
+            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+    except ValueError:
+        return None
+    return None
+
+
+def _extract_videos_from_channel_html(html: str) -> List[dict]:
+    """从 channel /videos 页的 ytInitialData JSON 里 walk 出 lockupViewModel。"""
+    m = re.search(r"var ytInitialData\s*=\s*(\{.+?\});</script>", html)
+    if not m:
+        return []
+    try:
+        data = json.loads(m.group(1))
+    except Exception:
         return []
 
-    # 简单正则解析（避免 feedparser 在 youtube ns 上偶发问题）
-    entries = re.findall(
-        r"<entry>(.*?)</entry>",
-        xml,
-        flags=re.DOTALL,
-    )
+    out = []
+
+    def walk(obj, depth=0):
+        if depth > 30 or len(out) > 50:
+            return
+        if isinstance(obj, dict):
+            if "lockupViewModel" in obj:
+                lvm = obj["lockupViewModel"]
+                vid = lvm.get("contentId")
+                if not vid:
+                    pass
+                else:
+                    title = ""
+                    try:
+                        title = lvm["metadata"]["lockupMetadataViewModel"]["title"]["content"]
+                    except Exception:
+                        pass
+                    duration_text = None
+                    try:
+                        for ov in lvm["contentImage"]["thumbnailViewModel"]["overlays"]:
+                            badges = ov.get("thumbnailBottomOverlayViewModel", {}).get("badges", [])
+                            for b in badges:
+                                t = b.get("thumbnailBadgeViewModel", {}).get("text", "")
+                                if re.match(r"^\d+:\d+", t):
+                                    duration_text = t
+                                    break
+                            if duration_text:
+                                break
+                    except Exception:
+                        pass
+                    pub_text = None
+                    try:
+                        rows = lvm["metadata"]["lockupMetadataViewModel"]["metadata"]["contentMetadataViewModel"]["metadataRows"]
+                        for r in rows:
+                            for part in r.get("metadataParts", []):
+                                t = part.get("text", {}).get("content", "")
+                                if "ago" in t or "前" in t:
+                                    pub_text = t
+                                    break
+                            if pub_text:
+                                break
+                    except Exception:
+                        pass
+                    out.append({
+                        "video_id": vid,
+                        "title": title,
+                        "duration_text": duration_text,
+                        "duration_seconds": _parse_duration_text(duration_text) if duration_text else None,
+                        "published_text": pub_text,
+                    })
+            for v in obj.values():
+                walk(v, depth + 1)
+        elif isinstance(obj, list):
+            for v in obj:
+                walk(v, depth + 1)
+
+    walk(data)
+    return out
+
+
+def fetch_recent_videos(channel_id: str, days_back: int = 2) -> List[dict]:
+    """从 channel 主页拿最近视频列表，过滤 days_back 窗口。
+
+    返回 [{video_id, url, title, published_at(datetime), duration_seconds, ...}, ...]
+    """
+    url = f"https://www.youtube.com/channel/{channel_id}/videos"
+    try:
+        html = _http_get(url)
+    except Exception as e:
+        print(f"  ⚠️  抓 channel 页失败 ({channel_id}): {e}", file=sys.stderr)
+        return []
+
+    videos = _extract_videos_from_channel_html(html)
+    if not videos:
+        print(f"  ⚠️  channel 页未解析出视频 ({channel_id})，可能页面布局有变", file=sys.stderr)
+        return []
+
     cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days_back)
     out = []
-    for e in entries:
-        vid_m = re.search(r"<yt:videoId>([\w-]+)</yt:videoId>", e)
-        title_m = re.search(r"<title>(.*?)</title>", e, flags=re.DOTALL)
-        pub_m = re.search(r"<published>([^<]+)</published>", e)
-        desc_m = re.search(r"<media:description>(.*?)</media:description>", e, flags=re.DOTALL)
-        if not (vid_m and title_m and pub_m):
-            continue
-        video_id = vid_m.group(1)
-        try:
-            published = datetime.datetime.fromisoformat(pub_m.group(1).replace("Z", "+00:00"))
-        except Exception:
-            continue
-        if published < cutoff:
+    for v in videos:
+        published = _parse_relative_time(v.get("published_text") or "")
+        # 解析失败时保守不丢（下游 dedup 兜底）；解析成功且太旧才丢
+        if published is not None and published < cutoff:
             continue
         out.append({
-            "video_id": video_id,
-            "url": f"https://www.youtube.com/watch?v={video_id}",
-            "title": title_m.group(1).strip(),
+            "video_id": v["video_id"],
+            "url": f"https://www.youtube.com/watch?v={v['video_id']}",
+            "title": v.get("title", ""),
             "published_at": published,
-            "description": (desc_m.group(1).strip() if desc_m else ""),
+            "duration_seconds": v.get("duration_seconds"),
+            "description": "",  # channel 页面不带描述，详情页能拿
         })
     return out
 
@@ -453,9 +609,9 @@ async def fetch_youtube_summaries(
                     print(f"  [debug] 关键词未命中：{v['title'][:40]}", file=sys.stderr)
                 continue
 
-            # 2. 字幕 + 时长
+            # 2. 字幕 + 时长（duration 优先用 channel 页解析出的，省一次 HTTP）
             transcript = get_transcript(vid)
-            duration = get_duration_seconds(vid)
+            duration = v.get("duration_seconds") or get_duration_seconds(vid)
 
             # 3. 总结（先走 Anthropic 总结字幕；字幕禁了/缺了再 fallback Gemini 直读视频）
             via_gemini = False
