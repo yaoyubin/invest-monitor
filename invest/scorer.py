@@ -59,6 +59,30 @@ C 级（<40）：忽略。重复新闻、标题党、小幅波动、无来源传
 雪球内容判定 thesis_impact 时一般只能是"可能增强 X thesis"或"可能削弱 X thesis"，
 而非"增强/削弱"——因为是 KOL 观点不是事实。命中 candidate trigger 也要写"作者认为命中"。
 
+【机构 13F-HR 持仓变动（_kind=institutional_filing）特殊评分规则】
+13F-HR 是 SEC 强制披露的机构季度持仓官方文件，事实性强（vs KOL 观点的不确定性）。
+评分按调仓规模 + 是否涉及 watchlist + 是否科技/AI 综合判断。
+
++30 大资金（Berkshire/Tiger Global/Bridgewater 等）调仓涉及 watchlist 的 holding 或 candidate
++25 大资金新建仓 / 完全清仓某 watchlist 标的（change_type=new/exit）
++25 科技/AI 标的（snippet 含 "🤖 科技/AI 标的"）的大幅变动（>$5B 或 >100%）
++15 加仓百分比 >100% 或减仓 >50%
++10 调仓金额 >$1B
++5  其他变动
+
+【典型评分举例】
+- 巴菲特加仓 GOOGL +204%（涉及候选）= S 级（90+：官方+大资金+大变动+涉及 watchlist）
+- 巴菲特新建仓 Delta Air Lines $2.65B（不在 watchlist 且非科技）= B/C 级
+- 巴菲特清仓某非 watchlist 小仓位 < $500M = C 级
+
+thesis_impact 措辞：
+- 涉及 watchlist 标的时："大资金背书 X thesis"或"大资金减持暗示 X red_flag"
+- 不涉及 watchlist 但是科技/AI 大变动："市场信号：大资金看多/看空科技股，可参考但非直接影响"
+- 其他："无影响"
+
+candidate trigger 一般不直接命中（除非 trigger 描述明确写了"知名机构建仓"等），
+若 watchlist red_flag 含"大资金大额减持"且本次命中，可触发。
+
 【YouTube 财经 UP 主视频（_kind=youtube_video）特殊评分规则】
 snippet 字段已经是 LLM 在抓取阶段对字幕的 ~500 字总结，UP 主的核心观点已浓缩。
 评分规则类似雪球长文（KOL 观点，非官方）：
@@ -156,6 +180,13 @@ def _build_user_prompt(items, holdings, candidates):
             # 把视频里 LLM 提取出的标的列表带上，scorer 判 thesis 相关性时更准
             brief["stocks_mentioned"] = it.get("stocks_mentioned") or []
             brief["duration_seconds"] = it.get("duration_seconds") or 0
+        elif kind == "institutional_filing":
+            brief["filer"] = it.get("filer", "")
+            brief["change_type"] = it.get("change_type", "")
+            brief["shares_change_pct"] = it.get("shares_change_pct")
+            brief["value_new_usd"] = it.get("value_new_usd", 0)
+            brief["value_old_usd"] = it.get("value_old_usd", 0)
+            brief["is_tech_ai"] = bool(it.get("is_tech_ai"))
         items_brief.append(brief)
 
     payload = {

@@ -34,6 +34,7 @@ history.json
 *.tmp
 logs/
 scorer_debug/
+# 注：sec_13f_snapshots/ 不忽略，由 CI 自动 commit（跨运行的 baseline）
 # Playwright 持久化登录态（含雪球 cookie，绝对不能上传）
 chrome_profile/
 

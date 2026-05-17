@@ -40,16 +40,15 @@ jobs:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
         run: python invest_daily.py
 
-      - name: 保存去重记录 (Commit & Push)
+      - name: 保存去重记录 + 13F 快照 (Commit & Push)
         run: |
           git config --global user.name 'GitHub Actions Bot'
           git config --global user.email 'actions@github.com'
-          if [ -f invest_history.json ]; then
-            git add invest_history.json
-            if ! git diff --cached --quiet; then
-              git commit -m "invest: update history [skip ci]"
-              git push
-            fi
+          [ -f invest_history.json ] && git add invest_history.json
+          [ -d sec_13f_snapshots ] && git add sec_13f_snapshots/
+          if ! git diff --cached --quiet; then
+            git commit -m "invest: update history + 13F snapshots [skip ci]"
+            git push
           fi
 
   notify_on_failure:

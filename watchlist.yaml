@@ -166,3 +166,10 @@ youtube_creators:
   - {handle: bellafinance, name: '贝拉聊财金', channel_id: UCVomjkM_t0EcctTWSE1Jvxg}
   - {handle: hackbearterry, name: 'Terry', channel_id: UC_whOg3XES3Fihic53fvo4Q}
 
+# 机构 13F-HR 季报监控（SEC EDGAR）
+# 每天检查是否有新 filing；季度才有一次，多数日子无变化
+# diff 出新建仓 / 大幅加减仓 / 清仓，重点关注科技/AI 标的
+institutional_filers:
+  - {cik: '0001067983', name: 'Berkshire Hathaway'}
+  # 之后可加：Tiger Global 0001167483、Bridgewater 0001350694、Pershing Square 0001336528 等
+

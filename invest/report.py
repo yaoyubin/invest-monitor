@@ -49,6 +49,7 @@ def build_html(
     form4_list=None,
     xueqiu_posts=None,
     youtube_videos=None,
+    institutional_changes=None,
     ndq_etf_premiums=None,
     symbol_order=None,
     symbol_to_name=None,
@@ -66,6 +67,7 @@ def build_html(
     form4_list = form4_list or []
     xueqiu_posts = xueqiu_posts or []
     youtube_videos = youtube_videos or []
+    institutional_changes = institutional_changes or []
     ndq_etf_premiums = ndq_etf_premiums or []
     symbol_to_name = symbol_to_name or {}
     candidates = candidates or []
@@ -88,6 +90,8 @@ def build_html(
             all_items.append({**it, "_kind": "xueqiu_post"})
         for it in youtube_videos:
             all_items.append({**it, "_kind": "youtube_video"})
+        for it in institutional_changes:
+            all_items.append({**it, "_kind": "institutional_filing"})
         parts.append(_render_top_signals(all_items))
         parts.append(_render_candidate_hits(scorer_result.get("candidate_hits") or [], cand_name_map))
         parts.append(_render_thesis_deltas(scorer_result.get("thesis_deltas") or [], symbol_to_name))
@@ -264,6 +268,74 @@ def build_html(
                 parts.append(f"<li style='margin-bottom:10px'>{head}{meta_html}{summary_html}</li>")
             parts.append("</ul></li>")
         parts.append("</ul>")
+
+    # —— 机构 13F-HR 持仓变动 ——
+    if institutional_changes:
+        parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
+        # 标题里同时展示科技股变动数（最重要的）
+        tech_n = sum(1 for c in institutional_changes if c.get("is_tech_ai"))
+        parts.append(
+            f"<h3 style='margin-top:0'>🏦 大资金动向 / 13F-HR "
+            f"（{len(institutional_changes)} 项，含 {tech_n} 项科技/AI 标的）</h3>"
+        )
+        # 按 filer 分组；filer 内部先科技后其他，按市值降序
+        by_filer: dict = {}
+        for c in institutional_changes:
+            by_filer.setdefault(c.get("filer") or "未知机构", []).append(c)
+        for filer, items in by_filer.items():
+            # 每个 filer 显示一份本期总览
+            first = items[0]
+            period = first.get("period") or ""
+            url = first.get("url") or ""
+            head_line = f"<b>{_escape(filer)}</b>"
+            if period:
+                head_line += f" <span style='color:#999;font-size:0.85em'>报告期 {_escape(period)}"
+                if url:
+                    head_line += f" · <a href='{_escape(url)}'>查看 filing</a>"
+                head_line += "</span>"
+            parts.append(f"<p style='margin:8px 0 4px'>{head_line}</p>")
+            # 排序：科技 > 大变动金额
+            items_sorted = sorted(items, key=lambda x: (
+                0 if x.get("is_tech_ai") else 1,
+                -max(x.get("value_new_usd", 0), x.get("value_old_usd", 0)),
+            ))
+            parts.append("<ul style='list-style:none; padding-left:0'>")
+            for c in items_sorted:
+                grade = c.get("grade")
+                ct = c.get("change_type", "")
+                # change_type emoji
+                ct_emoji = {"new": "🆕", "exit": "❌", "increase": "📈", "decrease": "📉"}.get(ct, "")
+                badge = ""
+                if grade and grade in GRADE_COLOR:
+                    badge = (
+                        f"<span style='display:inline-block;padding:0 6px;margin-right:6px;"
+                        f"border-radius:3px;background:{GRADE_COLOR[grade]};color:#fff;"
+                        f"font-size:0.78em;font-weight:bold'>{grade}</span>"
+                    )
+                tech_tag = ""
+                if c.get("is_tech_ai"):
+                    tech_tag = (
+                        "<span style='display:inline-block;padding:0 5px;margin-left:4px;"
+                        "border-radius:3px;background:#1e40af;color:#fff;font-size:0.75em'>🤖 科技/AI</span>"
+                    )
+                title = c.get("title", "")
+                head = f"{badge}{ct_emoji} {_escape(title)}{tech_tag}"
+                # scorer 给的 why/impact
+                why = c.get("why_important") or ""
+                impact = c.get("thesis_impact") or ""
+                meta_parts = []
+                if why:
+                    meta_parts.append(f"🧭 {_escape(why)}")
+                if impact and impact != "无影响":
+                    meta_parts.append(f"🎯 {_escape(impact)}")
+                meta_html = ""
+                if meta_parts:
+                    meta_html = (
+                        "<div style='color:#444;font-size:0.88em;margin-top:2px'>"
+                        + "<br/>".join(meta_parts) + "</div>"
+                    )
+                parts.append(f"<li style='margin-bottom:8px'>{head}{meta_html}</li>")
+            parts.append("</ul>")
 
     # —— 纳斯达克 ETF 溢价 ——
     if ndq_etf_premiums:

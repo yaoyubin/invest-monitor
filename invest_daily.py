@@ -30,6 +30,7 @@ from invest_config import (
     get_seeking_alpha_tickers,
     get_xueqiu_kols,
     get_youtube_creators,
+    get_institutional_filers,
 )
 from invest.dedup import InvestHistoryManager
 from invest.earnings_forward import get_earnings_forward
@@ -48,6 +49,8 @@ XUEQIU_DAYS_BACK = int(os.getenv("XUEQIU_DAYS_BACK", "7"))
 # YouTube 默认开启（不像雪球需要 Playwright，CI 也能跑；要关只需 watchlist 清空 youtube_creators）
 ENABLE_YOUTUBE = os.getenv("ENABLE_YOUTUBE", "1").lower() in ("1", "true", "yes")
 YOUTUBE_DAYS_BACK = int(os.getenv("YOUTUBE_DAYS_BACK", "2"))
+# 13F 默认开启（每天一次轻量 EDGAR 检查；季度才有 filing，多数日子无变化）
+ENABLE_13F = os.getenv("ENABLE_13F", "1").lower() in ("1", "true", "yes")
 # 设了就把 HTML 写到该目录（按日期命名），并跳过 Gmail 发送。
 # 本地 launchd 跑用此模式（不要发邮件）；CI 不设此变量，照旧发邮件
 RADAR_LOCAL_OUTPUT_DIR = os.getenv("RADAR_LOCAL_OUTPUT_DIR")
@@ -138,6 +141,20 @@ def main():
                 youtube_videos = []
             print(f"  → 保留 {len(youtube_videos)} 条相关视频入库")
 
+    # 机构 13F-HR 持仓变动（默认开启，季度才有 filing）
+    institutional_changes = []
+    if ENABLE_13F:
+        filers = get_institutional_filers()
+        if filers:
+            print(f"检查机构 13F-HR ({len(filers)} 个 filer)...")
+            try:
+                from invest.sec_13f import fetch_13f_changes
+                institutional_changes = fetch_13f_changes(filers)
+            except Exception as e:
+                print(f"⚠️ 13F 抓取失败（不影响其他数据源）: {e}")
+                institutional_changes = []
+            print(f"  → {len(institutional_changes)} 个变动事件入库")
+
     # 纳指 ETF 溢价
     print("获取纳斯达克ETF溢价...")
     ndq_etf_premiums = get_ndq_etf_premiums()
@@ -145,8 +162,10 @@ def main():
         print("纳斯达克ETF溢价提醒：" + "；".join(p["code"] + " " + p["premium_str"] for p in ndq_etf_premiums))
 
     # —— 投资雷达评分 ——
-    # 顺序：财报前瞻 → 高管 → YouTube → 雪球长文 → SA Analysis → SA News（最噪放最后）
+    # 顺序：13F 机构 → 财报前瞻 → 高管 → YouTube → 雪球 → SA Analysis → SA News
     all_items_for_scoring = []
+    for it in institutional_changes:
+        all_items_for_scoring.append({**it, "_kind": "institutional_filing"})
     for it in earnings_forward:
         all_items_for_scoring.append({**it, "_kind": "earnings_forward"})
     for it in form4_list:
@@ -170,6 +189,7 @@ def main():
     form4_list = attach_grades(form4_list, scored_items)
     xueqiu_posts = attach_grades(xueqiu_posts, scored_items)
     youtube_videos = attach_grades(youtube_videos, scored_items)
+    institutional_changes = attach_grades(institutional_changes, scored_items)
 
     # 展示顺序与名称：先 holdings，再 candidates
     earnings_symbols = [h["symbol"] for h in earnings_stocks]
@@ -190,6 +210,7 @@ def main():
         form4_list=form4_list,
         xueqiu_posts=xueqiu_posts,
         youtube_videos=youtube_videos,
+        institutional_changes=institutional_changes,
         ndq_etf_premiums=ndq_etf_premiums,
         symbol_order=symbol_order,
         symbol_to_name=symbol_to_name,
@@ -206,7 +227,8 @@ def main():
         f"S {s_count} 条 / A {a_count} 条 / 候选触发 {len(hits)} 条 / "
         f"财报前瞻 {len(earnings_forward)} / SA News {len(sa_news)} / "
         f"SA Analysis {len(sa_analysis)} / 高管 {len(form4_list)} / "
-        f"雪球 {len(xueqiu_posts)} / YouTube {len(youtube_videos)}"
+        f"雪球 {len(xueqiu_posts)} / YouTube {len(youtube_videos)} / "
+        f"13F {len(institutional_changes)}"
     )
 
     if RADAR_LOCAL_OUTPUT_DIR:

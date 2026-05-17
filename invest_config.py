@@ -128,6 +128,32 @@ def get_xueqiu_kols():
     return out
 
 
+def get_institutional_filers():
+    """监控 13F-HR 的机构投资者列表。从 watchlist.yaml 的 institutional_filers 节读取。
+
+    返回 [{cik, name, ...}, ...]。cik 必须是 10 位（不足补 0）字符串。
+    """
+    data = _load_watchlist()
+    if data is None:
+        return []
+    raw = data.get("institutional_filers") or []
+    out = []
+    for item in raw:
+        if isinstance(item, dict):
+            cik = str(item.get("cik") or "").strip().zfill(10)
+            if not cik or cik == "0000000000":
+                continue
+            out.append({
+                "cik": cik,
+                "name": item.get("name") or f"CIK {cik}",
+            })
+        else:
+            cik = str(item).strip().zfill(10)
+            if cik and cik != "0000000000":
+                out.append({"cik": cik, "name": f"CIK {cik}"})
+    return out
+
+
 def get_youtube_creators():
     """YouTube 财经 UP 主列表。从 watchlist.yaml 的 youtube_creators 节读取。
 
