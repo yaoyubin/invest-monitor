@@ -170,6 +170,10 @@ youtube_creators:
 # 每天检查是否有新 filing；季度才有一次，多数日子无变化
 # diff 出新建仓 / 大幅加减仓 / 清仓，重点关注科技/AI 标的
 institutional_filers:
-  - {cik: '0001067983', name: 'Berkshire Hathaway'}
-  # 之后可加：Tiger Global 0001167483、Bridgewater 0001350694、Pershing Square 0001336528 等
+  - {cik: '0001067983', name: 'Berkshire Hathaway'}    # 价值 / Buffett-Abel
+  - {cik: '0001167483', name: 'Tiger Global'}           # 科技成长共识
+  - {cik: '0001135730', name: 'Coatue'}                 # 科技对冲（稳健版）
+  - {cik: '0001649339', name: 'Scion (Burry)'}          # 反向指标 / 科技 PUT 信号
+  # 备选：Pershing Square 0001336528、Bridgewater 0001350694、
+  # Duquesne (Druckenmiller) 0001536411、Appaloosa (Tepper) 0000980072
 

@@ -1,0 +1,444 @@
+{
+  "cik": "0001135730",
+  "period": "2026-03-31",
+  "filing_date": "2026-05-15",
+  "accession": "0000919574-26-003501",
+  "info_table_url": "https://www.sec.gov/Archives/edgar/data/1135730/000091957426003501/infotable.xml",
+  "saved_at": "2026-05-17T18:41:36.395313Z",
+  "holdings": {
+    "02079K305": {
+      "name": "ALPHABET INC",
+      "cusip": "02079K305",
+      "value_usd": 1240368782,
+      "shares": 4313426,
+      "share_type": "SH"
+    },
+    "02079K107": {
+      "name": "ALPHABET INC",
+      "cusip": "02079K107",
+      "value_usd": 320102771,
+      "shares": 1115885,
+      "share_type": "SH"
+    },
+    "023135106": {
+      "name": "AMAZON COM INC",
+      "cusip": "023135106",
+      "value_usd": 1651740634,
+      "shares": 7930766,
+      "share_type": "SH"
+    },
+    "00165C302": {
+      "name": "AMC ENTMT HLDGS INC",
+      "cusip": "00165C302",
+      "value_usd": 223573,
+      "shares": 228136,
+      "share_type": "SH"
+    },
+    "038222105": {
+      "name": "APPLIED MATLS INC",
+      "cusip": "038222105",
+      "value_usd": 1793782961,
+      "shares": 5248202,
+      "share_type": "SH"
+    },
+    "03831W108": {
+      "name": "APPLOVIN CORP",
+      "cusip": "03831W108",
+      "value_usd": 513423184,
+      "shares": 1290008,
+      "share_type": "SH"
+    },
+    "038923108": {
+      "name": "ARBOR REALTY TRUST INC",
+      "cusip": "038923108",
+      "value_usd": 32357983,
+      "shares": 4196885,
+      "share_type": "SH"
+    },
+    "N07059210": {
+      "name": "ASML HLDG NV",
+      "cusip": "N07059210",
+      "value_usd": 655440753,
+      "shares": 496234,
+      "share_type": "SH"
+    },
+    "08862E109": {
+      "name": "BEYOND MEAT INC",
+      "cusip": "08862E109",
+      "value_usd": 240925,
+      "shares": 343393,
+      "share_type": "SH"
+    },
+    "11135F101": {
+      "name": "BROADCOM INC",
+      "cusip": "11135F101",
+      "value_usd": 1703497233,
+      "shares": 5503852,
+      "share_type": "SH"
+    },
+    "12541W209": {
+      "name": "C H ROBINSON WORLDWIDE IN",
+      "cusip": "12541W209",
+      "value_usd": 95159771,
+      "shares": 573010,
+      "share_type": "SH"
+    },
+    "142152107": {
+      "name": "CARIS LIFE SCIENCES INC",
+      "cusip": "142152107",
+      "value_usd": 175581457,
+      "shares": 9819992,
+      "share_type": "SH"
+    },
+    "146869102": {
+      "name": "CARVANA CO",
+      "cusip": "146869102",
+      "value_usd": 214092781,
+      "shares": 681000,
+      "share_type": "SH"
+    },
+    "15961R303": {
+      "name": "CHARGEPOINT HOLDINGS INC",
+      "cusip": "15961R303",
+      "value_usd": 748858,
+      "shares": 154086,
+      "share_type": "SH"
+    },
+    "16935C109": {
+      "name": "CHIME FINL INC",
+      "cusip": "16935C109",
+      "value_usd": 188648409,
+      "shares": 10071992,
+      "share_type": "SH"
+    },
+    "21037T109": {
+      "name": "CONSTELLATION ENERGY CORP",
+      "cusip": "21037T109",
+      "value_usd": 1293618644,
+      "shares": 4632475,
+      "share_type": "SH"
+    },
+    "25809K105": {
+      "name": "DOORDASH INC",
+      "cusip": "25809K105",
+      "value_usd": 82853971,
+      "shares": 551808,
+      "share_type": "SH"
+    },
+    "G29183103": {
+      "name": "EATON CORP PLC",
+      "cusip": "G29183103",
+      "value_usd": 1698395280,
+      "shares": 4748498,
+      "share_type": "SH"
+    },
+    "29355A107": {
+      "name": "ENPHASE ENERGY INC",
+      "cusip": "29355A107",
+      "value_usd": 62306834,
+      "shares": 1647893,
+      "share_type": "SH"
+    },
+    "29444U700": {
+      "name": "EQUINIX INC",
+      "cusip": "29444U700",
+      "value_usd": 1069330093,
+      "shares": 1090886,
+      "share_type": "SH"
+    },
+    "31946M103": {
+      "name": "FIRST CTZNS BANCSHARES INC D",
+      "cusip": "31946M103",
+      "value_usd": 262906301,
+      "shares": 139498,
+      "share_type": "SH"
+    },
+    "36828A101": {
+      "name": "GE VERNOVA INC",
+      "cusip": "36828A101",
+      "value_usd": 2245411301,
+      "shares": 2572358,
+      "share_type": "SH"
+    },
+    "368736104": {
+      "name": "GENERAC HLDGS INC",
+      "cusip": "368736104",
+      "value_usd": 76278904,
+      "shares": 390513,
+      "share_type": "SH"
+    },
+    "42806J148": {
+      "name": "HERTZ GLOBAL HLDGS INC",
+      "cusip": "42806J148",
+      "value_usd": 1068896,
+      "shares": 468814,
+      "share_type": "SH"
+    },
+    "42806J700": {
+      "name": "HERTZ GLOBAL HLDGS INC",
+      "cusip": "42806J700",
+      "value_usd": 492454,
+      "shares": 106823,
+      "share_type": "SH"
+    },
+    "46120E602": {
+      "name": "INTUITIVE SURGICAL INC",
+      "cusip": "46120E602",
+      "value_usd": 394250172,
+      "shares": 855225,
+      "share_type": "SH"
+    },
+    "46438F101": {
+      "name": "ISHARES BITCOIN TRUST ETF",
+      "cusip": "46438F101",
+      "value_usd": 2582823,
+      "shares": 67226,
+      "share_type": "SH"
+    },
+    "512807306": {
+      "name": "LAM RESEARCH CORP",
+      "cusip": "512807306",
+      "value_usd": 2145895279,
+      "shares": 10043505,
+      "share_type": "SH"
+    },
+    "549498202": {
+      "name": "LUCID GROUP INC",
+      "cusip": "549498202",
+      "value_usd": 2815095,
+      "shares": 295393,
+      "share_type": "SH"
+    },
+    "576323109": {
+      "name": "MASTEC INC",
+      "cusip": "576323109",
+      "value_usd": 187766498,
+      "shares": 583597,
+      "share_type": "SH"
+    },
+    "58463J304": {
+      "name": "MEDICAL PROPERTIES TRUST INC",
+      "cusip": "58463J304",
+      "value_usd": 20952593,
+      "shares": 4525398,
+      "share_type": "SH"
+    },
+    "30303M102": {
+      "name": "META PLATFORMS INC",
+      "cusip": "30303M102",
+      "value_usd": 1608861600,
+      "shares": 2812056,
+      "share_type": "SH"
+    },
+    "595112103": {
+      "name": "MICRON TECHNOLOGY INC",
+      "cusip": "595112103",
+      "value_usd": 56058129,
+      "shares": 165931,
+      "share_type": "SH"
+    },
+    "594918104": {
+      "name": "MICROSOFT CORP",
+      "cusip": "594918104",
+      "value_usd": 918027893,
+      "shares": 2480017,
+      "share_type": "SH"
+    },
+    "632307104": {
+      "name": "NATERA INC",
+      "cusip": "632307104",
+      "value_usd": 508342981,
+      "shares": 2541842,
+      "share_type": "SH"
+    },
+    "64110L106": {
+      "name": "NETFLIX INC.",
+      "cusip": "64110L106",
+      "value_usd": 662815794,
+      "shares": 6893560,
+      "share_type": "SH"
+    },
+    "670002401": {
+      "name": "NOVAVAX INC",
+      "cusip": "670002401",
+      "value_usd": 31233066,
+      "shares": 3836986,
+      "share_type": "SH"
+    },
+    "G6683N103": {
+      "name": "NU HLDGS LTD",
+      "cusip": "G6683N103",
+      "value_usd": 421523487,
+      "shares": 29333576,
+      "share_type": "SH"
+    },
+    "67066G104": {
+      "name": "NVIDIA CORPORATION",
+      "cusip": "67066G104",
+      "value_usd": 1104234528,
+      "shares": 6331620,
+      "share_type": "SH"
+    },
+    "679369108": {
+      "name": "OLAPLEX HLDGS INC",
+      "cusip": "679369108",
+      "value_usd": 2567885,
+      "shares": 1264968,
+      "share_type": "SH"
+    },
+    "70450Y103": {
+      "name": "PAYPAL HLDGS INC",
+      "cusip": "70450Y103",
+      "value_usd": 56247576,
+      "shares": 1243590,
+      "share_type": "SH"
+    },
+    "70614W100": {
+      "name": "PELOTON INTERACTIVE INC",
+      "cusip": "70614W100",
+      "value_usd": 10725000,
+      "shares": 2500000,
+      "share_type": "SH"
+    },
+    "72352L106": {
+      "name": "PINTEREST INC",
+      "cusip": "72352L106",
+      "value_usd": 30788532,
+      "shares": 1678764,
+      "share_type": "SH"
+    },
+    "72919P202": {
+      "name": "PLUG PWR INC",
+      "cusip": "72919P202",
+      "value_usd": 5752249,
+      "shares": 2545243,
+      "share_type": "SH"
+    },
+    "747525103": {
+      "name": "QUALCOMM INC",
+      "cusip": "747525103",
+      "value_usd": 178658039,
+      "shares": 1387312,
+      "share_type": "SH"
+    },
+    "74767V109": {
+      "name": "QUANTUMSCAPE CORP",
+      "cusip": "74767V109",
+      "value_usd": 27402068,
+      "shares": 4294995,
+      "share_type": "SH"
+    },
+    "75734B100": {
+      "name": "REDDIT INC",
+      "cusip": "75734B100",
+      "value_usd": 375658823,
+      "shares": 2789891,
+      "share_type": "SH"
+    },
+    "76680R206": {
+      "name": "RINGCENTRAL INC",
+      "cusip": "76680R206",
+      "value_usd": 15298144,
+      "shares": 411351,
+      "share_type": "SH"
+    },
+    "83443Q103": {
+      "name": "SOLSTICE ADVANCED MATLS INC",
+      "cusip": "83443Q103",
+      "value_usd": 126013498,
+      "shares": 1654589,
+      "share_type": "SH"
+    },
+    "L8681T102": {
+      "name": "SPOTIFY TECHNOLOGY S A",
+      "cusip": "L8681T102",
+      "value_usd": 640524408,
+      "shares": 1320914,
+      "share_type": "SH"
+    },
+    "85208M102": {
+      "name": "SPROUTS FMRS MKT INC",
+      "cusip": "85208M102",
+      "value_usd": 92847011,
+      "shares": 1203773,
+      "share_type": "SH"
+    },
+    "860897107": {
+      "name": "STITCH FIX INC",
+      "cusip": "860897107",
+      "value_usd": 2434085,
+      "shares": 735373,
+      "share_type": "SH"
+    },
+    "871607107": {
+      "name": "SYNOPSYS INC",
+      "cusip": "871607107",
+      "value_usd": 302022605,
+      "shares": 761760,
+      "share_type": "SH"
+    },
+    "874039100": {
+      "name": "TAIWAN SEMICONDUCTOR MANUFAC",
+      "cusip": "874039100",
+      "value_usd": 3137374709,
+      "shares": 9283547,
+      "share_type": "SH"
+    },
+    "88160R101": {
+      "name": "TESLA INC",
+      "cusip": "88160R101",
+      "value_usd": 21873026,
+      "shares": 58838,
+      "share_type": "SH"
+    },
+    "88339J105": {
+      "name": "THE TRADE DESK INC",
+      "cusip": "88339J105",
+      "value_usd": 31473049,
+      "shares": 1387089,
+      "share_type": "SH"
+    },
+    "90364P105": {
+      "name": "UIPATH INC",
+      "cusip": "90364P105",
+      "value_usd": 25192083,
+      "shares": 2269557,
+      "share_type": "SH"
+    },
+    "91680M107": {
+      "name": "UPSTART HLDGS INC",
+      "cusip": "91680M107",
+      "value_usd": 22339791,
+      "shares": 870947,
+      "share_type": "SH"
+    },
+    "92537N108": {
+      "name": "VERTIV HOLDINGS CO",
+      "cusip": "92537N108",
+      "value_usd": 245977597,
+      "shares": 981633,
+      "share_type": "SH"
+    },
+    "92826C839": {
+      "name": "VISA INC",
+      "cusip": "92826C839",
+      "value_usd": 217235907,
+      "shares": 718753,
+      "share_type": "SH"
+    },
+    "98954M101": {
+      "name": "ZILLOW GROUP INC",
+      "cusip": "98954M101",
+      "value_usd": 13583743,
+      "shares": 328189,
+      "share_type": "SH"
+    },
+    "98954M200": {
+      "name": "ZILLOW GROUP INC",
+      "cusip": "98954M200",
+      "value_usd": 30608786,
+      "shares": 739700,
+      "share_type": "SH"
+    }
+  }
+}

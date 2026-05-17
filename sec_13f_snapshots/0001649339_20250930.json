@@ -1,0 +1,66 @@
+{
+  "cik": "0001649339",
+  "period": "2025-09-30",
+  "filing_date": "2025-11-03",
+  "accession": "0001649339-25-000007",
+  "info_table_url": "https://www.sec.gov/Archives/edgar/data/1649339/000164933925000007/infotable.xml",
+  "saved_at": "2026-05-17T18:41:07.939646Z",
+  "holdings": {
+    "116794207": {
+      "name": "BRUKER CORP",
+      "cusip": "116794207",
+      "value_usd": 13137181,
+      "shares": 48334,
+      "share_type": "SH"
+    },
+    "406216101": {
+      "name": "HALLIBURTON CO",
+      "cusip": "406216101",
+      "value_usd": 61500000,
+      "shares": 2500000,
+      "share_type": "SH"
+    },
+    "550021109": {
+      "name": "LULULEMON ATHLETICA INC",
+      "cusip": "550021109",
+      "value_usd": 17793000,
+      "shares": 100000,
+      "share_type": "SH"
+    },
+    "60855R100": {
+      "name": "MOLINA HEALTHCARE INC",
+      "cusip": "60855R100",
+      "value_usd": 23920000,
+      "shares": 125000,
+      "share_type": "SH"
+    },
+    "67066G104": {
+      "name": "NVIDIA CORPORATION",
+      "cusip": "67066G104",
+      "value_usd": 186580000,
+      "shares": 1000000,
+      "share_type": "SH"
+    },
+    "69608A108": {
+      "name": "PALANTIR TECHNOLOGIES INC",
+      "cusip": "69608A108",
+      "value_usd": 912100000,
+      "shares": 5000000,
+      "share_type": "SH"
+    },
+    "717081103": {
+      "name": "PFIZER INC",
+      "cusip": "717081103",
+      "value_usd": 152880000,
+      "shares": 6000000,
+      "share_type": "SH"
+    },
+    "78442P106": {
+      "name": "SLM CORP",
+      "cusip": "78442P106",
+      "value_usd": 13287895,
+      "shares": 480054,
+      "share_type": "SH"
+    }
+  }
+}
