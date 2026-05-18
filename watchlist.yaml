@@ -183,12 +183,9 @@ candidates:
       - 卫星业务接到大单（如 Globalstar、政府卫星采购）
       - Electron 发射成功率持续 >95% 且单价上调
 
-  # TODO: 沐曦集成电路 (MetaX) — 国产 AI 芯片。
-  # ticker 待确认：A 股科创板（SH688xxx）/ 港股新股 / 还未 IPO。
-  # 现在用 MetaX 占位，确认后改 key 为真实 ticker，market 改 a/hk
-  MetaX:
+  SH688802:
     name: 沐曦集成电路 (MetaX)
-    market: hk    # 占位，待确认
+    market: a
     why_not_buying_now:
       - 国内 AI 芯片竞争激烈（华为昇腾、寒武纪、海光、燧原、壁仞）
       - 先进制程受限（不能用最新 TSMC，依赖 SMIC N+1/N+2）
