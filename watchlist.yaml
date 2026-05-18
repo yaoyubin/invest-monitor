@@ -138,6 +138,69 @@ candidates:
       - 资本开支指引大幅上修
       - 国家大基金或产业链重大资本运作
 
+  GOOGL:
+    name: Alphabet (Google)
+    market: us
+    why_not_buying_now:
+      - 搜索业务被 AI Chat（ChatGPT/Perplexity）持续蚕食的中长期风险
+      - 反垄断诉讼判决待执行（可能强制拆分搜索/广告业务）
+      - 当前估值已 priced in Cloud / Gemini 高增长预期
+    revisit_triggers:
+      - Gemini 应用层 MAU/DAU 明确赶超 ChatGPT
+      - 搜索 query 量同比恢复正增长（停止下滑）
+      - 反垄断诉讼达成不损主业的和解
+      - Cloud 季度营收同比 >35%（脱离自然衰减）
+      - Waymo 商业化营收明确披露
+      - 大资金继续加仓（已发生：Berkshire 2026 Q1 +204% 至 $15.6B）
+
+  NVDA:
+    name: NVIDIA
+    market: us
+    why_not_buying_now:
+      - 已持有 AMD 做 AI GPU 敞口，不想过度集中
+      - 估值偏高（PE 50+），AI capex 周期顶部风险未释放
+      - 客户集中度高（前 5 大客户占营收 50%+）
+      - 中国出口管制对 H20 等阉割版需求不确定
+    revisit_triggers:
+      - 数据中心营收同比仍 >50%（不见顶迹象）
+      - Blackwell / Rubin 主力客户超预期订单（如 META、MSFT、AMZN、ORCL 公开追加）
+      - 大幅回调超 30%（估值修复机会）
+      - 推理（inference）市场份额维持 >70%（ASIC 未冲击）
+      - 中国出口管制实质放松（H20+ 系列恢复出口）
+
+  RKLB:
+    name: Rocket Lab
+    market: us
+    why_not_buying_now:
+      - Neutron 中型火箭尚未首飞，关键里程碑未达
+      - 持续亏损，盈利路径长
+      - 卫星制造业务利润率低
+      - 小型火箭市场拥挤（SpaceX Starlink + Falcon 9 主导）
+    revisit_triggers:
+      - Neutron 火箭首飞成功 + 商业订单确认
+      - 美国政府/国防大额合同（如 NSSL、SDA Tranche）
+      - 季度 EBITDA 转正
+      - 卫星业务接到大单（如 Globalstar、政府卫星采购）
+      - Electron 发射成功率持续 >95% 且单价上调
+
+  # TODO: 沐曦集成电路 (MetaX) — 国产 AI 芯片。
+  # ticker 待确认：A 股科创板（SH688xxx）/ 港股新股 / 还未 IPO。
+  # 现在用 MetaX 占位，确认后改 key 为真实 ticker，market 改 a/hk
+  MetaX:
+    name: 沐曦集成电路 (MetaX)
+    market: hk    # 占位，待确认
+    why_not_buying_now:
+      - 国内 AI 芯片竞争激烈（华为昇腾、寒武纪、海光、燧原、壁仞）
+      - 先进制程受限（不能用最新 TSMC，依赖 SMIC N+1/N+2）
+      - 营收规模相对小，盈利路径未明
+      - 新股估值通常偏高
+    revisit_triggers:
+      - 拿到头部互联网/政府客户量产订单（如阿里 / 字节 / 国家算力中心）
+      - 季度营收同比 >100% 且毛利率持续改善
+      - 制程突破（SMIC N+2 量产 + 良率公开披露）
+      - 美国对国产替代加大力度（如 H20 出口禁令加码）
+      - 公开盈亏平衡时间表
+
 # 雪球大V关注列表（"一日必读"分组）
 # 每天抓他们的最新长文，过滤后送入 LLM 评分
 # 格式：- uid 或 - {uid: ..., name: ...}（备注名只为日志可读）
