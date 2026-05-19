@@ -1,0 +1,42 @@
+{
+  "AMD": {
+    "cached_at": "2026-05-19T05:31:49.233488Z",
+    "next_earnings": "2026-08-04"
+  },
+  "BILI": {
+    "cached_at": "2026-05-19T05:31:51.930237Z",
+    "next_earnings": "2026-05-19"
+  },
+  "GOOGL": {
+    "cached_at": "2026-05-19T05:31:55.450419Z",
+    "next_earnings": "2026-07-23"
+  },
+  "INTC": {
+    "cached_at": "2026-05-19T05:31:53.647032Z",
+    "next_earnings": "2026-07-23"
+  },
+  "MPNGY": {
+    "cached_at": "2026-05-19T05:31:52.538105Z",
+    "next_earnings": "2026-05-26"
+  },
+  "NVDA": {
+    "cached_at": "2026-05-19T05:31:54.553309Z",
+    "next_earnings": "2026-05-20"
+  },
+  "RKLB": {
+    "cached_at": "2026-05-19T05:31:56.110129Z",
+    "next_earnings": "2026-08-06"
+  },
+  "TCEHY": {
+    "cached_at": "2026-05-19T05:31:51.245488Z",
+    "next_earnings": "2026-08-12"
+  },
+  "TSLA": {
+    "cached_at": "2026-05-19T05:31:49.869684Z",
+    "next_earnings": "2026-07-22"
+  },
+  "TSM": {
+    "cached_at": "2026-05-19T05:31:50.517583Z",
+    "next_earnings": "2026-07-16"
+  }
+}

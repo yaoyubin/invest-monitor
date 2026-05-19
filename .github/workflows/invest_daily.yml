@@ -46,8 +46,9 @@ jobs:
           git config --global user.email 'actions@github.com'
           [ -f invest_history.json ] && git add invest_history.json
           [ -d sec_13f_snapshots ] && git add sec_13f_snapshots/
+          [ -f earnings_cache.json ] && git add earnings_cache.json
           if ! git diff --cached --quiet; then
-            git commit -m "invest: update history + 13F snapshots [skip ci]"
+            git commit -m "invest: update history + 13F snapshots + earnings cache [skip ci]"
             git push
           fi
 
