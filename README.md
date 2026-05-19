@@ -275,6 +275,17 @@ CI workflow 在 `.github/workflows/invest_daily.yml`，每天自动 commit 更�
   TSLA   -1   FSD 欧洲监管受阻削弱放行 thesis
   ...
 
+📅 财报日历                                  ← 独立区块（新）
+  🔴 明天 · [BILI] Bilibili 2026-05-19
+  🔴 后天 · [NVDA] NVIDIA 2026-05-20 [A]
+  🟡 8 天后 · [MPNGY] MeiTuan 2026-05-26
+  ⚪ 8 周后 · [TSM] TSMC 2026-07-16
+
+👥 高管买卖 (Form 4)                          ← 独立区块（新）
+  [A] [AMD] Lisa Su 买入 5000 股 · 2026-05-17
+      📝 CEO 大额买入信号强
+  [B] [TSLA] CFO 卖出 10000 股 · 2026-05-15
+
 📚 按股票分组的原始信息
   AMD / TSLA / TSM / TCEHY / BILI / MPNGY / IBIT / INTC ...
 

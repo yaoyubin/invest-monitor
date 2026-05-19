@@ -96,6 +96,10 @@ def build_html(
         parts.append(_render_candidate_hits(scorer_result.get("candidate_hits") or [], cand_name_map))
         parts.append(_render_thesis_deltas(scorer_result.get("thesis_deltas") or [], symbol_to_name))
 
+    # —— 高显眼度：财报日历 + 高管买卖（独立成区块，放在分组列表之前） ——
+    parts.append(_render_earnings_calendar(earnings_forward or [], symbol_to_name))
+    parts.append(_render_form4_summary(form4_list, symbol_to_name))
+
     # —— 按股票分组的原始信息 ——
     forward_symbols = {n["symbol"] for n in (earnings_forward or [])}
     all_symbols = (
@@ -466,6 +470,127 @@ def _render_thesis_deltas(deltas, name_map):
             "</tr>"
         )
     parts.append("</tbody></table>")
+    return "\n".join(parts)
+
+
+def _render_earnings_calendar(earnings_forward, name_map):
+    """财报日历独立区块：按日期升序，emoji 标紧急度，含倒计时。
+
+    earnings_forward 项形如 {symbol, earnings_date, from_cache?, grade?}
+    """
+    parts = ["<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />"]
+    parts.append("<h3 style='margin-top:0'>📅 财报日历</h3>")
+    if not earnings_forward:
+        parts.append("<p style='color:#888'>未来两周内无 watchlist 持仓的财报。</p>")
+        return "\n".join(parts)
+
+    today = datetime.date.today()
+    # 按日期升序
+    items = sorted(
+        [it for it in earnings_forward if it.get("earnings_date")],
+        key=lambda x: x["earnings_date"],
+    )
+    parts.append("<ul style='list-style:none; padding-left:0'>")
+    for it in items:
+        sym = it.get("symbol", "")
+        display = name_map.get(sym, sym)
+        date_str = it.get("earnings_date", "")
+        try:
+            d = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+            days = (d - today).days
+        except Exception:
+            days = None
+        # 紧急度标记
+        if days is None:
+            emoji, color = "📅", "#666"
+            countdown = ""
+        elif days <= 0:
+            emoji, color = "🔴", "#c00"
+            countdown = "今天"
+        elif days == 1:
+            emoji, color = "🔴", "#c00"
+            countdown = "明天"
+        elif days <= 7:
+            emoji, color = "🟡", "#d97706"
+            countdown = f"{days} 天后"
+        else:
+            emoji, color = "⚪", "#666"
+            countdown = f"{days} 天后"
+
+        grade = it.get("grade")
+        badge = ""
+        if grade and grade in GRADE_COLOR:
+            badge = (
+                f"<span style='display:inline-block;padding:0 6px;margin-right:6px;"
+                f"border-radius:3px;background:{GRADE_COLOR[grade]};color:#fff;"
+                f"font-size:0.78em;font-weight:bold'>{grade}</span>"
+            )
+        cache_note = ""
+        if it.get("from_cache"):
+            cache_note = (
+                " <span style='color:#888;font-size:0.75em'>"
+                "(cache 兜底 · yfinance 暂时未返回)</span>"
+            )
+        line = (
+            f"{badge}{emoji} <b style='color:{color}'>{countdown}</b> · "
+            f"<b>[{_escape(sym)}]</b> {_escape(display)} "
+            f"<span style='color:#666'>{_escape(date_str)}</span>{cache_note}"
+        )
+        parts.append(f"<li style='margin-bottom:8px;font-size:1.02em'>{line}</li>")
+    parts.append("</ul>")
+    return "\n".join(parts)
+
+
+def _render_form4_summary(form4_list, name_map):
+    """高管买卖独立区块：按 grade（S>A>B>C）+ 时间倒序，每条带 symbol/grade/标题。"""
+    parts = ["<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />"]
+    parts.append("<h3 style='margin-top:0'>👥 高管买卖 (Form 4)</h3>")
+    if not form4_list:
+        parts.append(
+            "<p style='color:#888'>近 15 天 watchlist 内无高管买卖披露"
+            "（或未配置 FINNHUB_API_KEY）。</p>"
+        )
+        return "\n".join(parts)
+
+    grade_order = {"S": 0, "A": 1, "B": 2, "C": 3, None: 4}
+    items = sorted(
+        form4_list,
+        key=lambda x: (grade_order.get(x.get("grade")), -1 * (
+            int(datetime.datetime.strptime(x.get("filing_date", "2000-01-01"), "%Y-%m-%d").timestamp())
+            if x.get("filing_date") else 0
+        )),
+    )
+    parts.append("<ul style='list-style:none; padding-left:0'>")
+    for it in items:
+        sym = it.get("symbol", "")
+        display = name_map.get(sym, sym)
+        title = it.get("title", "")
+        url = it.get("url", "")
+        grade = it.get("grade")
+        badge = ""
+        if grade and grade in GRADE_COLOR:
+            badge = (
+                f"<span style='display:inline-block;padding:0 6px;margin-right:6px;"
+                f"border-radius:3px;background:{GRADE_COLOR[grade]};color:#fff;"
+                f"font-size:0.78em;font-weight:bold'>{grade}</span>"
+            )
+        head = f"{badge}<b>[{_escape(sym)}]</b> {_escape(display)} · "
+        head += f"<a href='{_escape(url)}'>{_escape(title)}</a>" if url else _escape(title)
+        why = it.get("why_important") or ""
+        impact = it.get("thesis_impact") or ""
+        meta_parts = []
+        if why:
+            meta_parts.append(f"📝 {_escape(why)}")
+        if impact and impact != "无影响":
+            meta_parts.append(f"🎯 {_escape(impact)}")
+        meta_html = ""
+        if meta_parts:
+            meta_html = (
+                "<div style='color:#444;font-size:0.9em;margin-top:2px'>"
+                + "<br/>".join(meta_parts) + "</div>"
+            )
+        parts.append(f"<li style='margin-bottom:8px'>{head}{meta_html}</li>")
+    parts.append("</ul>")
     return "\n".join(parts)
 
 
