@@ -6,7 +6,7 @@
   2. 今日 S/A 级事件（投资雷达核心）
   3. 候选标的 trigger 命中（如有）
   4. 持仓 thesis delta 表
-  5. 按股票分组的原始信息（财报前瞻 / SA News / SA Analysis / 高管买卖）
+  5. 按股票分组的原始信息（财报前瞻 / SA News / SA Analysis / 高管买卖；空小节自动省略）
   6. 纳斯达克 ETF 溢价
 
 经典模式（无 scorer_result）保持旧行为：仅输出标题 + 按股票分组 + ETF。
@@ -132,20 +132,22 @@ def build_html(
 
             parts.append(f"<h4>{_escape(display_name)} ({_escape(symbol)})</h4>")
 
-            parts.append("<p><b>财报前瞻</b></p>")
+            # 仅在确有内容时才显示对应小节，避免与报告开头的财报日历/高管买卖汇总重复出现空“无”。
             if earnings_date_str:
+                parts.append("<p><b>财报前瞻</b></p>")
                 parts.append(f"<p>下次财报：{_escape(earnings_date_str)}（未来两周内）</p>")
-            else:
-                parts.append("<p style='color:#888'>无</p>")
 
-            parts.append("<p><b>高管买卖</b></p>")
-            parts.append(_render_item_list(form4_for_symbol))
+            if form4_for_symbol:
+                parts.append("<p><b>高管买卖</b></p>")
+                parts.append(_render_item_list(form4_for_symbol))
 
-            parts.append("<p><b>Seeking Alpha · News</b></p>")
-            parts.append(_render_item_list(news_list))
+            if news_list:
+                parts.append("<p><b>Seeking Alpha · News</b></p>")
+                parts.append(_render_item_list(news_list))
 
-            parts.append("<p><b>Seeking Alpha · Analysis</b></p>")
-            parts.append(_render_item_list(analysis_list))
+            if analysis_list:
+                parts.append("<p><b>Seeking Alpha · Analysis</b></p>")
+                parts.append(_render_item_list(analysis_list))
 
             if i < len(symbol_list) - 1:
                 parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
