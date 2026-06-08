@@ -6,7 +6,7 @@
   2. 今日 S/A 级事件（投资雷达核心）
   3. 候选标的 trigger 命中（如有）
   4. 持仓 thesis delta 表
-  5. 按股票分组的原始信息（财报前瞻 / SA News / SA Analysis / 高管买卖；空小节自动省略）
+  5. 按股票分组的原始信息（财报前瞻 / SA News / SA Analysis / Finnhub News / 高管买卖；空小节自动省略）
   6. 纳斯达克 ETF 溢价
 
 经典模式（无 scorer_result）保持旧行为：仅输出标题 + 按股票分组 + ETF。
@@ -46,6 +46,7 @@ def build_html(
     earnings_forward,
     sa_news=None,
     sa_analysis=None,
+    finnhub_news=None,
     form4_list=None,
     xueqiu_posts=None,
     youtube_videos=None,
@@ -64,6 +65,7 @@ def build_html(
     """
     sa_news = sa_news or []
     sa_analysis = sa_analysis or []
+    finnhub_news = finnhub_news or []
     form4_list = form4_list or []
     xueqiu_posts = xueqiu_posts or []
     youtube_videos = youtube_videos or []
@@ -84,6 +86,8 @@ def build_html(
             all_items.append({**it, "_kind": "sa_news"})
         for it in sa_analysis:
             all_items.append({**it, "_kind": "sa_analysis"})
+        for it in finnhub_news:
+            all_items.append({**it, "_kind": "finnhub_news"})
         for it in form4_list:
             all_items.append({**it, "_kind": "form4"})
         for it in xueqiu_posts:
@@ -106,6 +110,7 @@ def build_html(
         forward_symbols
         | {n.get("symbol") for n in sa_news if n.get("symbol")}
         | {n.get("symbol") for n in sa_analysis if n.get("symbol")}
+        | {n.get("symbol") for n in finnhub_news if n.get("symbol")}
         | {n.get("symbol") for n in form4_list if n.get("symbol")}
     )
 
@@ -129,6 +134,7 @@ def build_html(
             form4_for_symbol = [f for f in form4_list if f.get("symbol") == symbol]
             news_list = [n for n in sa_news if n.get("symbol") == symbol]
             analysis_list = [n for n in sa_analysis if n.get("symbol") == symbol]
+            finnhub_list = [n for n in finnhub_news if n.get("symbol") == symbol]
 
             parts.append(f"<h4>{_escape(display_name)} ({_escape(symbol)})</h4>")
 
@@ -148,6 +154,10 @@ def build_html(
             if analysis_list:
                 parts.append("<p><b>Seeking Alpha · Analysis</b></p>")
                 parts.append(_render_item_list(analysis_list))
+
+            if finnhub_list:
+                parts.append("<p><b>Finnhub · News</b></p>")
+                parts.append(_render_item_list(finnhub_list))
 
             if i < len(symbol_list) - 1:
                 parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")

@@ -34,6 +34,7 @@ from invest_config import (
 )
 from invest.dedup import InvestHistoryManager
 from invest.earnings_forward import get_earnings_forward
+from invest.finnhub_news import fetch_finnhub_news
 from invest.form4 import fetch_form4
 from invest.haoetf import get_ndq_etf_premiums
 from invest.report import build_html
@@ -98,6 +99,14 @@ def main():
 
     for n in sa_news + sa_analysis:
         history.mark_reported(n["id"])
+
+    # Finnhub 个股新闻（与 SA 并行的信源，复用 FINNHUB_API_KEY；未配置 key 则返回空）
+    finnhub_news = []
+    if sa_pull_tickers:
+        print("抓取 Finnhub 个股新闻...")
+        finnhub_news = fetch_finnhub_news(history, sa_pull_tickers, within_days=3, max_per_symbol=8)
+        for n in finnhub_news:
+            history.mark_reported(n["id"])
 
     form4_list = []
     if us_symbols:
@@ -178,6 +187,8 @@ def main():
         all_items_for_scoring.append({**it, "_kind": "sa_analysis"})
     for it in sa_news:
         all_items_for_scoring.append({**it, "_kind": "sa_news"})
+    for it in finnhub_news:
+        all_items_for_scoring.append({**it, "_kind": "finnhub_news"})
 
     scorer_result = score_items(all_items_for_scoring, holdings, candidates)
     scored_items = scorer_result.get("scored_items", [])
@@ -186,6 +197,7 @@ def main():
     earnings_forward = attach_grades(earnings_forward, scored_items)
     sa_news = attach_grades(sa_news, scored_items)
     sa_analysis = attach_grades(sa_analysis, scored_items)
+    finnhub_news = attach_grades(finnhub_news, scored_items)
     form4_list = attach_grades(form4_list, scored_items)
     xueqiu_posts = attach_grades(xueqiu_posts, scored_items)
     youtube_videos = attach_grades(youtube_videos, scored_items)
@@ -207,6 +219,7 @@ def main():
         earnings_forward,
         sa_news=sa_news,
         sa_analysis=sa_analysis,
+        finnhub_news=finnhub_news,
         form4_list=form4_list,
         xueqiu_posts=xueqiu_posts,
         youtube_videos=youtube_videos,
@@ -226,7 +239,7 @@ def main():
     summary = (
         f"S {s_count} 条 / A {a_count} 条 / 候选触发 {len(hits)} 条 / "
         f"财报前瞻 {len(earnings_forward)} / SA News {len(sa_news)} / "
-        f"SA Analysis {len(sa_analysis)} / 高管 {len(form4_list)} / "
+        f"SA Analysis {len(sa_analysis)} / Finnhub News {len(finnhub_news)} / 高管 {len(form4_list)} / "
         f"雪球 {len(xueqiu_posts)} / YouTube {len(youtube_videos)} / "
         f"13F {len(institutional_changes)}"
     )

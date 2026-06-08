@@ -167,7 +167,7 @@ def _build_user_prompt(items, holdings, candidates):
         brief = {
             "id": it.get("id"),
             "symbol": it.get("symbol"),
-            "kind": kind,  # earnings_forward / sa_news / sa_analysis / form4 / xueqiu_post / youtube_video
+            "kind": kind,  # earnings_forward / sa_news / sa_analysis / finnhub_news / form4 / xueqiu_post / youtube_video
             "title": it.get("title", ""),
             "snippet": body,
             "url": it.get("url", ""),
