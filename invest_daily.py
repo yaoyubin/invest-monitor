@@ -7,8 +7,13 @@
 """
 import asyncio
 import datetime
+import socket
 import sys
 import os
+
+# 全局兜底超时：yfinance 等同步请求若不设超时，对端无响应会让进程永久卡死，
+# launchd 看到旧实例未退出就不再触发，日报会连续静默缺失（2026-06-05 实际发生过）
+socket.setdefaulttimeout(60)
 
 _project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _project_root)
@@ -52,8 +57,8 @@ ENABLE_YOUTUBE = os.getenv("ENABLE_YOUTUBE", "1").lower() in ("1", "true", "yes"
 YOUTUBE_DAYS_BACK = int(os.getenv("YOUTUBE_DAYS_BACK", "2"))
 # 13F 默认开启（每天一次轻量 EDGAR 检查；季度才有 filing，多数日子无变化）
 ENABLE_13F = os.getenv("ENABLE_13F", "1").lower() in ("1", "true", "yes")
-# 设了就把 HTML 写到该目录（按日期命名），并跳过 Gmail 发送。
-# 本地 launchd 跑用此模式（不要发邮件）；CI 不设此变量，照旧发邮件
+# 设了就把 HTML 写到该目录（按日期命名）作为本地备份，同时也发 Gmail。
+# 本地 launchd 跑用此模式；CI 不设此变量，只发邮件不落盘
 RADAR_LOCAL_OUTPUT_DIR = os.getenv("RADAR_LOCAL_OUTPUT_DIR")
 
 
@@ -245,7 +250,7 @@ def main():
     )
 
     if RADAR_LOCAL_OUTPUT_DIR:
-        # 本地模式：写 HTML 到磁盘，不发邮件
+        # 本地模式：写 HTML 到磁盘作为备份，再发一份到 Gmail
         os.makedirs(RADAR_LOCAL_OUTPUT_DIR, exist_ok=True)
         out_path = os.path.join(RADAR_LOCAL_OUTPUT_DIR, f"radar_{today}.html")
         full_html = (
@@ -257,6 +262,12 @@ def main():
         with open(out_path, "w", encoding="utf-8") as f:
             f.write(full_html)
         print(f"投资雷达日报已写入本地：{out_path} | {summary}")
+        # 完整报告作为附件随邮件发送：正文超过 ~102KB 会被 Gmail 截断，附件不会
+        success = asyncio.run(send_gmail(html, subject, attachment_path=out_path))
+        if success:
+            print(f"投资雷达日报已发送：{summary}")
+        else:
+            print("投资雷达日报发送失败（本地备份已保留），请检查 Gmail 配置。")
     else:
         # 默认模式（含 CI）：发 Gmail
         success = asyncio.run(send_gmail(html, subject))

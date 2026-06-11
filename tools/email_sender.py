@@ -4,15 +4,18 @@ Gmail 发送：供 UGC 监控与投资日报共用
 import asyncio
 import os
 import smtplib
+from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 
-async def send_gmail(html_content, subject):
+async def send_gmail(html_content, subject, attachment_path=None):
     """
     使用 Gmail SMTP 发送 HTML 邮件。
     html_content: 邮件正文 HTML 字符串
     subject: 邮件主题
+    attachment_path: 可选，附件文件路径（如完整报告 HTML；正文超过 ~102KB 会被
+        Gmail 截断，附件不受此限制）
     返回: True 成功, False 失败
     """
     sender_email = (os.environ.get("GMAIL_SENDER") or "").strip()
@@ -36,11 +39,23 @@ async def send_gmail(html_content, subject):
     </html>
     """
 
-    msg = MIMEMultipart("alternative")
+    msg = MIMEMultipart("mixed" if attachment_path else "alternative")
     msg["Subject"] = subject
     msg["From"] = sender_email
     msg["To"] = recipient_email
     msg.attach(MIMEText(full_html, "html", "utf-8"))
+
+    if attachment_path:
+        try:
+            with open(attachment_path, "rb") as f:
+                part = MIMEApplication(f.read(), _subtype="html")
+            part.add_header(
+                "Content-Disposition", "attachment",
+                filename=os.path.basename(attachment_path),
+            )
+            msg.attach(part)
+        except OSError as e:
+            print(f"⚠️ 附件读取失败，仅发送正文: {e}")
 
     def _send_sync():
         try:
