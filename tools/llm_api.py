@@ -224,6 +224,7 @@ def query_llm(prompt: str, client=None, model=None, provider="openai", image_pat
             with client.messages.stream(
                 model=model,
                 max_tokens=32768,
+                thinking={"type": "adaptive"},
                 messages=messages,
             ) as stream:
                 for text in stream.text_stream:
