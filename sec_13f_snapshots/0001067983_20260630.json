@@ -1,0 +1,213 @@
+{
+  "cik": "0001067983",
+  "period": "2026-06-30",
+  "filing_date": "2026-08-14",
+  "accession": "0001193125-26-352200",
+  "info_table_url": "https://www.sec.gov/Archives/edgar/data/1067983/000119312526352200/56757.xml",
+  "saved_at": "2026-08-14T22:30:41.334924Z",
+  "holdings": {
+    "02005N100": {
+      "name": "ALLY FINL INC",
+      "cusip": "02005N100",
+      "value_usd": 1240650000,
+      "shares": 27000000,
+      "share_type": "SH"
+    },
+    "02079K107": {
+      "name": "ALPHABET INC",
+      "cusip": "02079K107",
+      "value_usd": 9606489032,
+      "shares": 27188433,
+      "share_type": "SH"
+    },
+    "02079K305": {
+      "name": "ALPHABET INC",
+      "cusip": "02079K305",
+      "value_usd": 28157599351,
+      "shares": 78791167,
+      "share_type": "SH"
+    },
+    "025816109": {
+      "name": "AMERICAN EXPRESS CO",
+      "cusip": "025816109",
+      "value_usd": 51282319275,
+      "shares": 151610700,
+      "share_type": "SH"
+    },
+    "037833100": {
+      "name": "APPLE INC",
+      "cusip": "037833100",
+      "value_usd": 65950296923,
+      "shares": 227917808,
+      "share_type": "SH"
+    },
+    "060505104": {
+      "name": "BANK OF AMER CORP",
+      "cusip": "060505104",
+      "value_usd": 27543790975,
+      "shares": 483394015,
+      "share_type": "SH"
+    },
+    "14040H105": {
+      "name": "CAPITAL ONE FINL CORP",
+      "cusip": "14040H105",
+      "value_usd": 601860000,
+      "shares": 3000000,
+      "share_type": "SH"
+    },
+    "166764100": {
+      "name": "CHEVRON CORPORATION",
+      "cusip": "166764100",
+      "value_usd": 13986141890,
+      "shares": 84375856,
+      "share_type": "SH"
+    },
+    "191216100": {
+      "name": "COCA COLA CO",
+      "cusip": "191216100",
+      "value_usd": 32508000000,
+      "shares": 400000000,
+      "share_type": "SH"
+    },
+    "23331A109": {
+      "name": "D R HORTON INC",
+      "cusip": "23331A109",
+      "value_usd": 580504,
+      "shares": 3564,
+      "share_type": "SH"
+    },
+    "23918K108": {
+      "name": "DAVITA INC",
+      "cusip": "23918K108",
+      "value_usd": 6425268898,
+      "shares": 28880209,
+      "share_type": "SH"
+    },
+    "247361702": {
+      "name": "DELTA AIR LINES INC",
+      "cusip": "247361702",
+      "value_usd": 5368591200,
+      "shares": 57320000,
+      "share_type": "SH"
+    },
+    "47233W109": {
+      "name": "JEFFERIES FINANCIAL GROUP IN",
+      "cusip": "47233W109",
+      "value_usd": 21669229,
+      "shares": 433558,
+      "share_type": "SH"
+    },
+    "500754106": {
+      "name": "KRAFT HEINZ CO",
+      "cusip": "500754106",
+      "value_usd": 7691494401,
+      "shares": 325634818,
+      "share_type": "SH"
+    },
+    "501044101": {
+      "name": "KROGER CO",
+      "cusip": "501044101",
+      "value_usd": 2165670000,
+      "shares": 39000000,
+      "share_type": "SH"
+    },
+    "526057104": {
+      "name": "LENNAR CORP",
+      "cusip": "526057104",
+      "value_usd": 1186481443,
+      "shares": 13111741,
+      "share_type": "SH"
+    },
+    "526057302": {
+      "name": "LENNAR CORP",
+      "cusip": "526057302",
+      "value_usd": 26445959,
+      "shares": 298117,
+      "share_type": "SH"
+    },
+    "530909100": {
+      "name": "LIBERTY LIVE HOLDINGS INC",
+      "cusip": "530909100",
+      "value_usd": 504941901,
+      "shares": 4986588,
+      "share_type": "SH"
+    },
+    "530909308": {
+      "name": "LIBERTY LIVE HOLDINGS INC",
+      "cusip": "530909308",
+      "value_usd": 1118425787,
+      "shares": 10587143,
+      "share_type": "SH"
+    },
+    "546347105": {
+      "name": "LOUISIANA PAC CORP",
+      "cusip": "546347105",
+      "value_usd": 445592617,
+      "shares": 5664793,
+      "share_type": "SH"
+    },
+    "55616P104": {
+      "name": "MACYS INC",
+      "cusip": "55616P104",
+      "value_usd": 173031882,
+      "shares": 7347426,
+      "share_type": "SH"
+    },
+    "615369105": {
+      "name": "MOODYS CORP",
+      "cusip": "615369105",
+      "value_usd": 11173435852,
+      "shares": 24669778,
+      "share_type": "SH"
+    },
+    "62944T105": {
+      "name": "NVR INC",
+      "cusip": "62944T105",
+      "value_usd": 75710501,
+      "shares": 11112,
+      "share_type": "SH"
+    },
+    "650111107": {
+      "name": "NEW YORK TIMES CO MTN BE",
+      "cusip": "650111107",
+      "value_usd": 1098686000,
+      "shares": 15700000,
+      "share_type": "SH"
+    },
+    "670346105": {
+      "name": "NUCOR CORP",
+      "cusip": "670346105",
+      "value_usd": 413814258,
+      "shares": 1857752,
+      "share_type": "SH"
+    },
+    "674599105": {
+      "name": "OCCIDENTAL PETE CORP",
+      "cusip": "674599105",
+      "value_usd": 12868205304,
+      "shares": 264941431,
+      "share_type": "SH"
+    },
+    "829933100": {
+      "name": "SIRIUSXM HOLDINGS INC",
+      "cusip": "829933100",
+      "value_usd": 3686802237,
+      "shares": 124807117,
+      "share_type": "SH"
+    },
+    "92343E102": {
+      "name": "VERISIGN INC",
+      "cusip": "92343E102",
+      "value_usd": 2261494212,
+      "shares": 8989880,
+      "share_type": "SH"
+    },
+    "H1467J104": {
+      "name": "CHUBB LIMITED",
+      "cusip": "H1467J104",
+      "value_usd": 11670066615,
+      "shares": 34249183,
+      "share_type": "SH"
+    }
+  }
+}

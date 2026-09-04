@@ -1,0 +1,332 @@
+{
+  "cik": "0001167483",
+  "period": "2026-06-30",
+  "filing_date": "2026-08-14",
+  "accession": "0000919574-26-005427",
+  "info_table_url": "https://www.sec.gov/Archives/edgar/data/1167483/000091957426005427/infotable.xml",
+  "saved_at": "2026-08-14T22:30:41.657198Z",
+  "holdings": {
+    "G00894108": {
+      "name": "ACCELERANT HOLDINGS",
+      "cusip": "G00894108",
+      "value_usd": 879000,
+      "shares": 75000,
+      "share_type": "SH"
+    },
+    "007903107": {
+      "name": "ADVANCED MICRO DEVICES INC",
+      "cusip": "007903107",
+      "value_usd": 391955662,
+      "shares": 674727,
+      "share_type": "SH"
+    },
+    "02079K305": {
+      "name": "ALPHABET INC",
+      "cusip": "02079K305",
+      "value_usd": 2074778363,
+      "shares": 5805687,
+      "share_type": "SH"
+    },
+    "023135106": {
+      "name": "AMAZON COM INC",
+      "cusip": "023135106",
+      "value_usd": 2307979214,
+      "shares": 9683558,
+      "share_type": "SH"
+    },
+    "03769M106": {
+      "name": "APOLLO GLOBAL MGMT INC",
+      "cusip": "03769M106",
+      "value_usd": 322171145,
+      "shares": 2723110,
+      "share_type": "SH"
+    },
+    "038169207": {
+      "name": "APPLIED DIGITAL CORP",
+      "cusip": "038169207",
+      "value_usd": 33010500,
+      "shares": 885000,
+      "share_type": "SH"
+    },
+    "038222105": {
+      "name": "APPLIED MATLS INC",
+      "cusip": "038222105",
+      "value_usd": 1180087830,
+      "shares": 1632210,
+      "share_type": "SH"
+    },
+    "00138L108": {
+      "name": "ATRENEW INC",
+      "cusip": "00138L108",
+      "value_usd": 38046814,
+      "shares": 9831218,
+      "share_type": "SH"
+    },
+    "852234103": {
+      "name": "BLOCK INC",
+      "cusip": "852234103",
+      "value_usd": 347776532,
+      "shares": 4576007,
+      "share_type": "SH"
+    },
+    "11135F101": {
+      "name": "BROADCOM INC",
+      "cusip": "11135F101",
+      "value_usd": 662596921,
+      "shares": 1754062,
+      "share_type": "SH"
+    },
+    "15675D103": {
+      "name": "CEREBRAS SYSTEMS INC",
+      "cusip": "15675D103",
+      "value_usd": 662779000,
+      "shares": 2999000,
+      "share_type": "SH"
+    },
+    "16935C109": {
+      "name": "CHIME FINL INC",
+      "cusip": "16935C109",
+      "value_usd": 108217240,
+      "shares": 5284045,
+      "share_type": "SH"
+    },
+    "17253J106": {
+      "name": "CIPHER DIGITAL INC",
+      "cusip": "17253J106",
+      "value_usd": 22711500,
+      "shares": 927000,
+      "share_type": "SH"
+    },
+    "21874A106": {
+      "name": "CORE SCIENTIFIC INC NEW",
+      "cusip": "21874A106",
+      "value_usd": 20907030,
+      "shares": 817000,
+      "share_type": "SH"
+    },
+    "219948106": {
+      "name": "CORPAY INC",
+      "cusip": "219948106",
+      "value_usd": 716489508,
+      "shares": 2149877,
+      "share_type": "SH"
+    },
+    "22266T109": {
+      "name": "COUPANG INC",
+      "cusip": "22266T109",
+      "value_usd": 633448674,
+      "shares": 36467972,
+      "share_type": "SH"
+    },
+    "235851102": {
+      "name": "DANAHER CORP DEL",
+      "cusip": "235851102",
+      "value_usd": 86858880,
+      "shares": 456000,
+      "share_type": "SH"
+    },
+    "25809K105": {
+      "name": "DOORDASH INC",
+      "cusip": "25809K105",
+      "value_usd": 4675437,
+      "shares": 25337,
+      "share_type": "SH"
+    },
+    "29445S100": {
+      "name": "EQUIPMENTSHARE COM INC",
+      "cusip": "29445S100",
+      "value_usd": 90035840,
+      "shares": 4579646,
+      "share_type": "SH"
+    },
+    "36828A101": {
+      "name": "GE VERNOVA INC",
+      "cusip": "36828A101",
+      "value_usd": 936963773,
+      "shares": 797511,
+      "share_type": "SH"
+    },
+    "36866J105": {
+      "name": "GEMINI SPACE STA INC",
+      "cusip": "36866J105",
+      "value_usd": 298200,
+      "shares": 70000,
+      "share_type": "SH"
+    },
+    "458140100": {
+      "name": "INTEL CORP",
+      "cusip": "458140100",
+      "value_usd": 593803105,
+      "shares": 4252690,
+      "share_type": "SH"
+    },
+    "47215P106": {
+      "name": "JD.COM INC",
+      "cusip": "47215P106",
+      "value_usd": 5134220,
+      "shares": 201500,
+      "share_type": "SH"
+    },
+    "512807306": {
+      "name": "LAM RESEARCH CORP",
+      "cusip": "512807306",
+      "value_usd": 1370837288,
+      "shares": 3163495,
+      "share_type": "SH"
+    },
+    "531229755": {
+      "name": "LIBERTY MEDIA CORP DEL",
+      "cusip": "531229755",
+      "value_usd": 216781723,
+      "shares": 2278555,
+      "share_type": "SH"
+    },
+    "58733R102": {
+      "name": "MERCADOLIBRE INC",
+      "cusip": "58733R102",
+      "value_usd": 259914541,
+      "shares": 153126,
+      "share_type": "SH"
+    },
+    "30303M102": {
+      "name": "META PLATFORMS INC",
+      "cusip": "30303M102",
+      "value_usd": 1590269062,
+      "shares": 2823180,
+      "share_type": "SH"
+    },
+    "594918104": {
+      "name": "MICROSOFT CORP",
+      "cusip": "594918104",
+      "value_usd": 845603887,
+      "shares": 2266913,
+      "share_type": "SH"
+    },
+    "55318A108": {
+      "name": "MNTN INC",
+      "cusip": "55318A108",
+      "value_usd": 184000,
+      "shares": 20000,
+      "share_type": "SH"
+    },
+    "G6683N103": {
+      "name": "NU HLDGS LTD",
+      "cusip": "G6683N103",
+      "value_usd": 147394937,
+      "shares": 11032555,
+      "share_type": "SH"
+    },
+    "67066G104": {
+      "name": "NVIDIA CORPORATION",
+      "cusip": "67066G104",
+      "value_usd": 2240762490,
+      "shares": 11198773,
+      "share_type": "SH"
+    },
+    "732908108": {
+      "name": "PONY AI INC",
+      "cusip": "732908108",
+      "value_usd": 2156495,
+      "shares": 310287,
+      "share_type": "SH"
+    },
+    "75734B100": {
+      "name": "REDDIT INC",
+      "cusip": "75734B100",
+      "value_usd": 438952402,
+      "shares": 2528819,
+      "share_type": "SH"
+    },
+    "81141R100": {
+      "name": "SEA LTD",
+      "cusip": "81141R100",
+      "value_usd": 1203543536,
+      "shares": 12559152,
+      "share_type": "SH"
+    },
+    "G7997R103": {
+      "name": "SEAGATE TECHNOLOGY HLDNGS PL",
+      "cusip": "G7997R103",
+      "value_usd": 275121500,
+      "shares": 285100,
+      "share_type": "SH"
+    },
+    "81762P102": {
+      "name": "SERVICENOW INC",
+      "cusip": "81762P102",
+      "value_usd": 86719591,
+      "shares": 873485,
+      "share_type": "SH"
+    },
+    "824348106": {
+      "name": "SHERWIN WILLIAMS CO",
+      "cusip": "824348106",
+      "value_usd": 88518819,
+      "shares": 257083,
+      "share_type": "SH"
+    },
+    "84615Q103": {
+      "name": "SPACE EXPLORATION TECHN CORP",
+      "cusip": "84615Q103",
+      "value_usd": 64072500,
+      "shares": 375000,
+      "share_type": "SH"
+    },
+    "L8681T102": {
+      "name": "SPOTIFY TECHNOLOGY S A",
+      "cusip": "L8681T102",
+      "value_usd": 537837279,
+      "shares": 1171427,
+      "share_type": "SH"
+    },
+    "874039100": {
+      "name": "TAIWAN SEMICONDUCTOR MANUFAC",
+      "cusip": "874039100",
+      "value_usd": 2331022991,
+      "shares": 4881008,
+      "share_type": "SH"
+    },
+    "874054109": {
+      "name": "TAKE-TWO INTERACTIVE SOFTWAR",
+      "cusip": "874054109",
+      "value_usd": 452300813,
+      "shares": 1809348,
+      "share_type": "SH"
+    },
+    "90353T100": {
+      "name": "UBER TECHNOLOGIES INC",
+      "cusip": "90353T100",
+      "value_usd": 10909004,
+      "shares": 151178,
+      "share_type": "SH"
+    },
+    "91324P102": {
+      "name": "UNITEDHEALTH GROUP INC",
+      "cusip": "91324P102",
+      "value_usd": 123629974,
+      "shares": 297452,
+      "share_type": "SH"
+    },
+    "92826C839": {
+      "name": "VISA INC",
+      "cusip": "92826C839",
+      "value_usd": 274024954,
+      "shares": 798697,
+      "share_type": "SH"
+    },
+    "947002101": {
+      "name": "WEALTHFRONT CORP",
+      "cusip": "947002101",
+      "value_usd": 135502480,
+      "shares": 15156877,
+      "share_type": "SH"
+    },
+    "G9572D103": {
+      "name": "WEBULL CORP",
+      "cusip": "G9572D103",
+      "value_usd": 43841373,
+      "shares": 6724137,
+      "share_type": "SH"
+    }
+  }
+}
