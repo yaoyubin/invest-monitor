@@ -289,7 +289,7 @@ CI workflow 在 `.github/workflows/invest_daily.yml`，每天自动 commit 更�
   [B] [TSLA] CFO 卖出 10000 股 · 2026-05-15
 
 📰 雪球大V最新（49 条，AI 相关 12 / 其余 37）
-  PaulWu / 滑雪特 / 慢慢变富的践行者 / ...
+  PaulWu / 滑雪特 / 博实 / ...
 
 🎥 YouTube 财经 UP 主（3 条）
   贝拉聊财金 · 下周美股"超级审判周"... 📝 折叠总结
