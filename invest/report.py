@@ -6,11 +6,11 @@
   2. 今日 S/A 级事件（投资雷达核心）
   3. 候选标的 trigger 命中（如有）
   4. 持仓 thesis delta 表
-  5. 按股票分组的原始信息（财报前瞻 / SA News / SA Analysis / Finnhub News / 高管买卖；空小节自动省略）
-  6. IC 股指期货年化贴水
-  7. 纳斯达克 ETF 溢价
+  5. IC 股指期货年化贴水
+  6. 纳斯达克 ETF 溢价
+  7. 按股票分组的原始信息（财报前瞻 / SA News / SA Analysis / Finnhub News / 高管买卖；空小节自动省略），置于最后
 
-经典模式（无 scorer_result）保持旧行为：仅输出标题 + 按股票分组 + IC 贴水 + ETF。
+经典模式（无 scorer_result）保持旧行为：仅输出标题 + IC 贴水 + ETF + 按股票分组（最后）。
 """
 import datetime
 import re
@@ -167,65 +167,6 @@ def build_html(
                 parts.append("</ul></li>")
             parts.append("</ul>")
 
-
-    # —— 按股票分组的原始信息 ——
-    forward_symbols = {n["symbol"] for n in (earnings_forward or [])}
-    all_symbols = (
-        forward_symbols
-        | {n.get("symbol") for n in sa_news if n.get("symbol")}
-        | {n.get("symbol") for n in sa_analysis if n.get("symbol")}
-        | {n.get("symbol") for n in finnhub_news if n.get("symbol")}
-        | {n.get("symbol") for n in form4_list if n.get("symbol")}
-    )
-
-    if not all_symbols:
-        parts.append("<p>今日无财报前瞻、高管买卖、Seeking Alpha 新闻或分析（或均在 7 天内报过）。</p>")
-    else:
-        if symbol_order:
-            ordered = [s for s in symbol_order if s in all_symbols]
-            rest = sorted(all_symbols - set(ordered))
-            symbol_list = ordered + rest
-        else:
-            symbol_list = sorted(all_symbols)
-
-        forward_by_symbol = {n["symbol"]: n["earnings_date"] for n in (earnings_forward or [])}
-        parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
-        parts.append("<h3 style='margin-top:0'>📚 按股票分组的原始信息</h3>")
-
-        for i, symbol in enumerate(symbol_list):
-            display_name = symbol_to_name.get(symbol, symbol)
-            earnings_date_str = forward_by_symbol.get(symbol)
-            form4_for_symbol = [f for f in form4_list if f.get("symbol") == symbol]
-            news_list = [n for n in sa_news if n.get("symbol") == symbol]
-            analysis_list = [n for n in sa_analysis if n.get("symbol") == symbol]
-            finnhub_list = [n for n in finnhub_news if n.get("symbol") == symbol]
-
-            parts.append(f"<h4>{_escape(display_name)} ({_escape(symbol)})</h4>")
-
-            # 仅在确有内容时才显示对应小节，避免与报告开头的财报日历/高管买卖汇总重复出现空“无”。
-            if earnings_date_str:
-                parts.append("<p><b>财报前瞻</b></p>")
-                parts.append(f"<p>下次财报：{_escape(earnings_date_str)}（未来两周内）</p>")
-
-            if form4_for_symbol:
-                parts.append("<p><b>高管买卖</b></p>")
-                parts.append(_render_item_list(form4_for_symbol))
-
-            if news_list:
-                parts.append("<p><b>Seeking Alpha · News</b></p>")
-                parts.append(_render_item_list(news_list))
-
-            if analysis_list:
-                parts.append("<p><b>Seeking Alpha · Analysis</b></p>")
-                parts.append(_render_item_list(analysis_list))
-
-            if finnhub_list:
-                parts.append("<p><b>Finnhub · News</b></p>")
-                parts.append(_render_item_list(finnhub_list))
-
-            if i < len(symbol_list) - 1:
-                parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
-
     # —— YouTube 财经 UP 主视频总结 ——
     if youtube_videos:
         parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
@@ -372,6 +313,66 @@ def build_html(
             line += f"<a href='{_escape(p['url'])}'>详情</a>"
             parts.append(f"<li style='margin-bottom:8px'>{line}</li>")
         parts.append("</ul>")
+
+    # —— 按股票分组的原始信息（放在最后） ——
+    forward_symbols = {n["symbol"] for n in (earnings_forward or [])}
+    all_symbols = (
+        forward_symbols
+        | {n.get("symbol") for n in sa_news if n.get("symbol")}
+        | {n.get("symbol") for n in sa_analysis if n.get("symbol")}
+        | {n.get("symbol") for n in finnhub_news if n.get("symbol")}
+        | {n.get("symbol") for n in form4_list if n.get("symbol")}
+    )
+
+    if not all_symbols:
+        parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
+        parts.append("<h3 style='margin-top:0'>📚 按股票分组的原始信息</h3>")
+        parts.append("<p>今日无财报前瞻、高管买卖、Seeking Alpha 新闻或分析（或均在 7 天内报过）。</p>")
+    else:
+        if symbol_order:
+            ordered = [s for s in symbol_order if s in all_symbols]
+            rest = sorted(all_symbols - set(ordered))
+            symbol_list = ordered + rest
+        else:
+            symbol_list = sorted(all_symbols)
+
+        forward_by_symbol = {n["symbol"]: n["earnings_date"] for n in (earnings_forward or [])}
+        parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
+        parts.append("<h3 style='margin-top:0'>📚 按股票分组的原始信息</h3>")
+
+        for i, symbol in enumerate(symbol_list):
+            display_name = symbol_to_name.get(symbol, symbol)
+            earnings_date_str = forward_by_symbol.get(symbol)
+            form4_for_symbol = [f for f in form4_list if f.get("symbol") == symbol]
+            news_list = [n for n in sa_news if n.get("symbol") == symbol]
+            analysis_list = [n for n in sa_analysis if n.get("symbol") == symbol]
+            finnhub_list = [n for n in finnhub_news if n.get("symbol") == symbol]
+
+            parts.append(f"<h4>{_escape(display_name)} ({_escape(symbol)})</h4>")
+
+            # 仅在确有内容时才显示对应小节，避免与报告开头的财报日历/高管买卖汇总重复出现空“无”。
+            if earnings_date_str:
+                parts.append("<p><b>财报前瞻</b></p>")
+                parts.append(f"<p>下次财报：{_escape(earnings_date_str)}（未来两周内）</p>")
+
+            if form4_for_symbol:
+                parts.append("<p><b>高管买卖</b></p>")
+                parts.append(_render_item_list(form4_for_symbol))
+
+            if news_list:
+                parts.append("<p><b>Seeking Alpha · News</b></p>")
+                parts.append(_render_item_list(news_list))
+
+            if analysis_list:
+                parts.append("<p><b>Seeking Alpha · Analysis</b></p>")
+                parts.append(_render_item_list(analysis_list))
+
+            if finnhub_list:
+                parts.append("<p><b>Finnhub · News</b></p>")
+                parts.append(_render_item_list(finnhub_list))
+
+            if i < len(symbol_list) - 1:
+                parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
 
     return "\n".join(parts)
 

@@ -63,9 +63,9 @@ watchlist 分两类标的：
               │  HTML 日报 (invest/report.py)       │
               │  🚨 S/A 事件区  🎯 候选 trigger    │
               │  📊 thesis delta 表                 │
-              │  📚 按股票分组  📰 雪球 / 🎥 YT     │
-              │  🏦 13F 大资金动向  📉 IC 贴水      │
-              │  💱 ETF 溢价                        │
+              │  📰 雪球 / 🎥 YT  🏦 13F 大资金     │
+              │  📉 IC 贴水  💱 ETF 溢价            │
+              │  📚 按股票分组（最后）              │
               └──────┬─────────────────────┬────────┘
                      │                     │
         ┌────────────▼────────┐  ┌─────────▼──────────────┐
@@ -288,9 +288,6 @@ CI workflow 在 `.github/workflows/invest_daily.yml`，每天自动 commit 更�
       📝 CEO 大额买入信号强
   [B] [TSLA] CFO 卖出 10000 股 · 2026-05-15
 
-📚 按股票分组的原始信息
-  AMD / TSLA / TSM / TCEHY / BILI / MPNGY / IBIT / INTC ...
-
 📰 雪球大V最新（49 条，AI 相关 12 / 其余 37）
   PaulWu / 滑雪特 / 慢慢变富的践行者 / ...
 
@@ -303,6 +300,9 @@ CI workflow 在 `.github/workflows/invest_daily.yml`，每天自动 commit 更�
 
 📉 IC 年化贴水（当月 -15.2% / 次月 -11.6% / 当季 -10.9% / 下季 -10.2%）
 💱 纳指 ETF 溢价（159632 +2.88%）
+
+📚 按股票分组的原始信息                        ← 置于报告最后
+  AMD / TSLA / TSM / TCEHY / BILI / MPNGY / IBIT / INTC ...
 ```
 
 ---
