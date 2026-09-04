@@ -40,6 +40,7 @@ from invest.dedup import InvestHistoryManager
 from invest.earnings_forward import get_earnings_forward
 from invest.form4 import fetch_form4
 from invest.haoetf import get_ndq_etf_premiums
+from invest.ic_basis import get_ic_basis
 from invest.report import build_html
 from invest.sa_rss import fetch_seeking_alpha
 from invest.scorer import attach_grades, score_items
@@ -65,6 +66,8 @@ def main():
                     help="YouTube 只抓最近这些天的视频（默认 2，配合 dedup 避免重复）")
     ap.add_argument("--include-13f", action="store_true",
                     help="启用 SEC 13F-HR 机构持仓监控")
+    ap.add_argument("--include-sa", action="store_true",
+                    help="启用 Seeking Alpha News/Analysis 抓取（日报默认已关闭，与 ENABLE_SA_RSS 对应）")
     args = ap.parse_args()
 
     if not args.use_llm:
@@ -105,11 +108,11 @@ def main():
 
     sa_news, sa_analysis = [], []
     sa_pull = list(dict.fromkeys(list(sa_tickers) + candidate_us))
-    if sa_pull:
+    if args.include_sa and sa_pull:
         print(f"抓取 Seeking Alpha (tickers={len(sa_pull)})...")
         sa_news, sa_analysis = fetch_seeking_alpha(history, sa_pull, max_per_feed=20, delay_sec=1)
-    for n in sa_news + sa_analysis:
-        history.mark_reported(n["id"])
+        for n in sa_news + sa_analysis:
+            history.mark_reported(n["id"])
 
     form4_list = []
     if us_symbols:
@@ -173,11 +176,19 @@ def main():
     print("获取纳指 ETF 溢价...")
     ndq_etf_premiums = get_ndq_etf_premiums()
 
+    print("获取 IC 股指期货基差...")
+    try:
+        ic_basis = get_ic_basis()
+    except Exception as e:
+        print(f"⚠️ IC 基差抓取失败: {e}")
+        ic_basis = None
+
     print(
         f"抓取结果：earnings={len(earnings_forward)}, sa_news={len(sa_news)}, "
         f"sa_analysis={len(sa_analysis)}, form4={len(form4_list)}, "
         f"xueqiu={len(xueqiu_posts)}, youtube={len(youtube_videos)}, "
-        f"13f={len(institutional_changes)}, etf={len(ndq_etf_premiums)}"
+        f"13f={len(institutional_changes)}, etf={len(ndq_etf_premiums)}, "
+        f"ic={len(ic_basis['contracts']) if ic_basis else 0}"
     )
 
     # 评分顺序（信号密度从高到低，--limit 切掉时损失最小）：
@@ -250,6 +261,7 @@ def main():
         youtube_videos=youtube_videos,
         institutional_changes=institutional_changes,
         ndq_etf_premiums=ndq_etf_premiums,
+        ic_basis=ic_basis,
         symbol_order=symbol_order,
         symbol_to_name=symbol_to_name,
         scorer_result=scorer_result,

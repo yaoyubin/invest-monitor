@@ -80,6 +80,11 @@ SUMMARIZER_MODEL = os.getenv("SCORER_LLM_MODEL")
 # 字幕被禁时的 fallback：Gemini 直接读 YouTube URL
 GEMINI_MODEL = os.getenv("YOUTUBE_GEMINI_MODEL", "gemini-2.5-flash")
 
+# Gemini 直读视频是慢请求，且 google-genai 走 httpx、默认不设超时，
+# 也不吃 socket.setdefaulttimeout()。不显式设就会永久挂起：
+# 2026-07-19 的那次跑就卡在这里 14 天，把后续每天的 launchd 触发全吞了。
+GEMINI_TIMEOUT_SEC = int(os.getenv("YOUTUBE_GEMINI_TIMEOUT_SEC", "180"))
+
 # 单视频字幕送 LLM 的最大字符数（中文约等于 token 数）
 MAX_TRANSCRIPT_CHARS = 8000
 
@@ -502,7 +507,10 @@ def summarize_video_via_gemini(video_url: str, channel_name: str, title: str,
         print("⚠️ 未安装 google-genai，请: pip install google-genai", file=sys.stderr)
         return None
 
-    client = genai.Client(api_key=api_key)
+    client = genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(timeout=GEMINI_TIMEOUT_SEC * 1000),  # 毫秒
+    )
     prompt = GEMINI_VIDEO_PROMPT.format(channel=channel_name, title=title)
 
     try:

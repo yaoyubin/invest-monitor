@@ -1,6 +1,6 @@
 """
 投资雷达日报入口：
-  财报前瞻（yfinance）+ Seeking Alpha + 高管买卖
+  财报前瞻（yfinance）+ Finnhub 个股新闻 + 高管买卖（SA RSS 默认关闭，见 ENABLE_SA_RSS）
   → 7 天去重
   → LLM 评分（watchlist.yaml 的 holdings 看 thesis delta，candidates 看 entry trigger）
   → 组报 → 发 Gmail
@@ -10,10 +10,33 @@ import datetime
 import socket
 import sys
 import os
+import threading
 
 # 全局兜底超时：yfinance 等同步请求若不设超时，对端无响应会让进程永久卡死，
 # launchd 看到旧实例未退出就不再触发，日报会连续静默缺失（2026-06-05 实际发生过）
 socket.setdefaulttimeout(60)
+
+# 进程级看门狗：上面那行只管 socket 模块自建的连接，管不住自带 HTTP 栈的 SDK
+# （httpx/google-genai 显式传 timeout=None，直接盖掉全局默认）。2026-07-19 就是
+# Gemini 直读视频卡死 14 天，launchd 因旧实例还在而静默跳过了之后每一天。
+# 所以这里再兜一层：不管哪个库挂住，到点强制退出，让明天的触发能正常排上。
+# 用 os._exit 而非 sys.exit —— 后者只在主线程抛异常，卡在 C 层的阻塞 read 收不到。
+WATCHDOG_SEC = int(os.getenv("RADAR_WATCHDOG_SEC", "1800"))  # 30 分钟
+
+
+def _watchdog_fire():
+    print(
+        f"⏱️ 看门狗超时：运行超过 {WATCHDOG_SEC} 秒仍未结束，强制退出以免阻塞明天的 launchd 触发。",
+        file=sys.stderr,
+        flush=True,
+    )
+    os._exit(75)  # EX_TEMPFAIL：区别于正常退出，方便日志里一眼认出
+
+
+if WATCHDOG_SEC > 0:
+    _wd = threading.Timer(WATCHDOG_SEC, _watchdog_fire)
+    _wd.daemon = True
+    _wd.start()
 
 _project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _project_root)
@@ -42,6 +65,7 @@ from invest.earnings_forward import get_earnings_forward
 from invest.finnhub_news import fetch_finnhub_news
 from invest.form4 import fetch_form4
 from invest.haoetf import get_ndq_etf_premiums
+from invest.ic_basis import get_ic_basis
 from invest.report import build_html
 from invest.sa_rss import fetch_seeking_alpha
 from invest.scorer import attach_grades, score_items
@@ -57,6 +81,8 @@ ENABLE_YOUTUBE = os.getenv("ENABLE_YOUTUBE", "1").lower() in ("1", "true", "yes"
 YOUTUBE_DAYS_BACK = int(os.getenv("YOUTUBE_DAYS_BACK", "2"))
 # 13F 默认开启（每天一次轻量 EDGAR 检查；季度才有 filing，多数日子无变化）
 ENABLE_13F = os.getenv("ENABLE_13F", "1").lower() in ("1", "true", "yes")
+# Seeking Alpha News/Analysis 默认关闭（条数多导致日报过长；个股新闻由 Finnhub 覆盖）
+ENABLE_SA_RSS = os.getenv("ENABLE_SA_RSS", "0").lower() in ("1", "true", "yes")
 # 设了就把 HTML 写到该目录（按日期命名）作为本地备份，同时也发 Gmail。
 # 本地 launchd 跑用此模式；CI 不设此变量，只发邮件不落盘
 RADAR_LOCAL_OUTPUT_DIR = os.getenv("RADAR_LOCAL_OUTPUT_DIR")
@@ -95,15 +121,14 @@ def main():
             item["title"] = f"{item['symbol']} 下次财报：{item['earnings_date']}"
             item["url"] = ""
 
-    # SA combined feed 抓取（包含候选股）
+    # SA combined feed 抓取（包含候选股；默认关闭，见 ENABLE_SA_RSS）
     sa_news, sa_analysis = [], []
     sa_pull_tickers = list(dict.fromkeys(list(sa_tickers) + candidate_us))
-    if sa_pull_tickers:
+    if ENABLE_SA_RSS and sa_pull_tickers:
         print("抓取 Seeking Alpha News / Analysis...")
         sa_news, sa_analysis = fetch_seeking_alpha(history, sa_pull_tickers, max_per_feed=20, delay_sec=1)
-
-    for n in sa_news + sa_analysis:
-        history.mark_reported(n["id"])
+        for n in sa_news + sa_analysis:
+            history.mark_reported(n["id"])
 
     # Finnhub 个股新闻（与 SA 并行的信源，复用 FINNHUB_API_KEY；未配置 key 则返回空）
     finnhub_news = []
@@ -175,6 +200,18 @@ def main():
     if ndq_etf_premiums:
         print("纳斯达克ETF溢价提醒：" + "；".join(p["code"] + " " + p["premium_str"] for p in ndq_etf_premiums))
 
+    # IC（中证500股指期货）年化贴水
+    print("获取 IC 股指期货基差...")
+    try:
+        ic_basis = get_ic_basis()
+    except Exception as e:
+        print(f"⚠️ IC 基差抓取失败（不影响其他数据源）: {e}")
+        ic_basis = None
+    if ic_basis:
+        print("IC 年化贴水：" + "；".join(
+            f"{c['label']} {c['code']} {c['annual_pct']:+.2f}%" for c in ic_basis["contracts"]
+        ))
+
     # —— 投资雷达评分 ——
     # 顺序：13F 机构 → 财报前瞻 → 高管 → YouTube → 雪球 → SA Analysis → SA News
     all_items_for_scoring = []
@@ -230,6 +267,7 @@ def main():
         youtube_videos=youtube_videos,
         institutional_changes=institutional_changes,
         ndq_etf_premiums=ndq_etf_premiums,
+        ic_basis=ic_basis,
         symbol_order=symbol_order,
         symbol_to_name=symbol_to_name,
         scorer_result=scorer_result,
@@ -248,6 +286,8 @@ def main():
         f"雪球 {len(xueqiu_posts)} / YouTube {len(youtube_videos)} / "
         f"13F {len(institutional_changes)}"
     )
+    if ic_basis and ic_basis["contracts"]:
+        summary += f" / IC当月年化 {ic_basis['contracts'][0]['annual_pct']:+.2f}%"
 
     if RADAR_LOCAL_OUTPUT_DIR:
         # 本地模式：写 HTML 到磁盘作为备份，再发一份到 Gmail

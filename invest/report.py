@@ -7,9 +7,10 @@
   3. 候选标的 trigger 命中（如有）
   4. 持仓 thesis delta 表
   5. 按股票分组的原始信息（财报前瞻 / SA News / SA Analysis / Finnhub News / 高管买卖；空小节自动省略）
-  6. 纳斯达克 ETF 溢价
+  6. IC 股指期货年化贴水
+  7. 纳斯达克 ETF 溢价
 
-经典模式（无 scorer_result）保持旧行为：仅输出标题 + 按股票分组 + ETF。
+经典模式（无 scorer_result）保持旧行为：仅输出标题 + 按股票分组 + IC 贴水 + ETF。
 """
 import datetime
 import re
@@ -52,6 +53,7 @@ def build_html(
     youtube_videos=None,
     institutional_changes=None,
     ndq_etf_premiums=None,
+    ic_basis=None,
     symbol_order=None,
     symbol_to_name=None,
     scorer_result=None,
@@ -60,6 +62,7 @@ def build_html(
     """
     earnings_forward / sa_news / sa_analysis / form4_list / xueqiu_posts / youtube_videos:
       若启用雷达评分，每项已 attach grade / why_important / thesis_impact / trigger_hit。
+    ic_basis: invest.ic_basis.get_ic_basis() 的返回值；None 表示当日没抓到，小节省略
     scorer_result: dict {scored_items, thesis_deltas, candidate_hits}；None 表示未启用雷达
     candidates: 候选 watchlist（用于在 trigger 命中区块展示标的中文名）
     """
@@ -354,6 +357,10 @@ def build_html(
                 parts.append(f"<li style='margin-bottom:8px'>{head}{meta_html}</li>")
             parts.append("</ul>")
 
+    # —— IC 股指期货年化贴水 ——
+    if ic_basis:
+        parts.append(_render_ic_basis(ic_basis))
+
     # —— 纳斯达克 ETF 溢价 ——
     if ndq_etf_premiums:
         parts.append("<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />")
@@ -446,6 +453,56 @@ def _render_candidate_hits(hits, name_map):
             line += f"<br/><span style='color:#444;font-size:0.92em'>证据：{_escape(evidence)}</span>"
         parts.append(f"<li style='margin-bottom:12px'>{line}</li>")
     parts.append("</ul>")
+    return "\n".join(parts)
+
+
+def _render_ic_basis(ic_basis):
+    """IC（中证500股指期货）四个在挂合约的基差与年化贴水表。"""
+    contracts = ic_basis.get("contracts") or []
+    if not contracts:
+        return ""
+    spot = ic_basis.get("spot")
+    basis_note = "交易日口径 ×252" if ic_basis.get("day_count") == "trading" else "自然日口径 ×365"
+
+    parts = ["<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />"]
+    parts.append("<h3 style='margin-top:0'>📉 IC 股指期货年化贴水</h3>")
+    parts.append(
+        f"<p style='margin:0 0 8px;color:#444'>{_escape(ic_basis.get('index_name', ''))}现货 "
+        f"<b>{spot}</b>（{_escape(ic_basis.get('quote_date', ''))} 收盘）</p>"
+    )
+    th = "padding:6px 10px;border-bottom:1px solid #ddd"
+    td = "padding:6px 10px;border-bottom:1px solid #eee"
+    parts.append(
+        "<table style='border-collapse:collapse;font-size:0.95em'>"
+        "<thead><tr>"
+        f"<th style='{th};text-align:left'>合约</th>"
+        f"<th style='{th};text-align:right'>最新价</th>"
+        f"<th style='{th};text-align:right'>基差</th>"
+        f"<th style='{th};text-align:right'>年化贴水</th>"
+        f"<th style='{th};text-align:right'>剩余天数</th>"
+        "</tr></thead><tbody>"
+    )
+    for c in contracts:
+        annual = c.get("annual_pct", 0)
+        # 贴水（负基差）是常态也是收益来源，标红提示幅度；升水少见，标绿区分
+        color = "#c00" if annual < 0 else "#16a34a"
+        annual_str = f"{abs(annual):.2f}% {'贴水' if annual < 0 else '升水'}"
+        parts.append(
+            "<tr>"
+            f"<td style='{td}'>{_escape(c.get('label', ''))} "
+            f"<span style='color:#888'>{_escape(c.get('code', ''))}</span></td>"
+            f"<td style='{td};text-align:right'>{c.get('price')}</td>"
+            f"<td style='{td};text-align:right'>{c.get('basis'):+.1f}"
+            f"<span style='color:#888'>（{c.get('basis_pct'):+.2f}%）</span></td>"
+            f"<td style='{td};text-align:right;color:{color};font-weight:bold'>{annual_str}</td>"
+            f"<td style='{td};text-align:right;color:#888'>{c.get('days_left')}</td>"
+            "</tr>"
+        )
+    parts.append("</tbody></table>")
+    parts.append(
+        f"<p style='margin:6px 0 0;color:#888;font-size:0.85em'>年化 = 基差率 × 年天数 / 剩余天数（{basis_note}）；"
+        "交割日按合约月第三个周五估算，未调法定假日顺延。</p>"
+    )
     return "\n".join(parts)
 
 

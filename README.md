@@ -39,12 +39,12 @@ watchlist 分两类标的：
                                  │
                                  ▼
 ┌────────────────────────────────────────────────────────────────┐
-│                  7 个数据源（并行抓取）                          │
+│                  8 个数据源（并行抓取）                          │
 ├────────────────────────────────────────────────────────────────┤
 │  📈 财报前瞻 (yfinance)              📰 Seeking Alpha (RSS)     │
 │  👥 SEC Form 4 高管买卖              💱 纳指 ETF 溢价 (haoetf)  │
 │  🔴 雪球大 V (Playwright)            🎥 YouTube (字幕/Gemini)   │
-│  🏦 SEC 13F-HR 机构持仓 diff                                    │
+│  🏦 SEC 13F-HR 机构持仓 diff         📉 IC 年化贴水 (新浪行情)  │
 └──────────────────────────┬─────────────────────────────────────┘
                            ▼
               ┌────────────────────────────┐
@@ -64,7 +64,8 @@ watchlist 分两类标的：
               │  🚨 S/A 事件区  🎯 候选 trigger    │
               │  📊 thesis delta 表                 │
               │  📚 按股票分组  📰 雪球 / 🎥 YT     │
-              │  🏦 13F 大资金动向  💱 ETF 溢价     │
+              │  🏦 13F 大资金动向  📉 IC 贴水      │
+              │  💱 ETF 溢价                        │
               └──────┬─────────────────────┬────────┘
                      │                     │
         ┌────────────▼────────┐  ┌─────────▼──────────────┐
@@ -76,7 +77,7 @@ watchlist 分两类标的：
 
 ---
 
-## 数据源（7 个）
+## 数据源（8 个）
 
 | 模块 | 抓什么 | 工具 | 在哪跑 | 特殊要求 |
 |---|---|---|---|---|
@@ -87,6 +88,7 @@ watchlist 分两类标的：
 | `invest/xueqiu.py` | 雪球大 V 最新长文 / 长动态 | Playwright (真浏览器) | **仅本地** | `chrome_profile/` 已登录 |
 | `invest/youtube.py` | YouTube 财经 UP 主视频总结 | RSS / channel HTML + 字幕 + Gemini fallback | CI + 本地 | `GOOGLE_API_KEY`（字幕禁的视频用 Gemini 读视频） |
 | `invest/sec_13f.py` | 机构 13F-HR 季度持仓变动 diff | SEC EDGAR | CI + 本地 | — |
+| `invest/ic_basis.py` | IC 中证500股指期货当月/次月/当季/下季年化贴水 | 新浪行情 HTTP | CI + 本地 | — |
 
 **为什么雪球只在本地跑**：雪球用 Aliyun WAF JS 挑战，纯 HTTP 客户端绕不过去，必须真浏览器执行 JS。CI runner 上没有持久化的浏览器登录态，所以雪球只在本地 launchd 跑。
 
@@ -299,6 +301,7 @@ CI workflow 在 `.github/workflows/invest_daily.yml`，每天自动 commit 更�
 🏦 大资金动向 / 13F-HR（97 项，含 9 项科技/AI）
   Berkshire / Tiger Global / Coatue ...
 
+📉 IC 年化贴水（当月 -15.2% / 次月 -11.6% / 当季 -10.9% / 下季 -10.2%）
 💱 纳指 ETF 溢价（159632 +2.88%）
 ```
 
@@ -318,6 +321,7 @@ invest-monitor/
 │   ├── sa_rss.py                # Seeking Alpha combined feed
 │   ├── form4.py                 # SEC Form 4 高管买卖
 │   ├── haoetf.py                # 纳指 ETF 溢价
+│   ├── ic_basis.py              # IC 股指期货年化贴水
 │   ├── xueqiu.py                # 雪球大V Playwright 抓取
 │   ├── youtube.py               # YouTube channel HTML + 字幕 + Gemini fallback
 │   ├── sec_13f.py               # SEC 13F-HR 机构持仓 + diff 引擎
