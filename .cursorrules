@@ -105,6 +105,13 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 - When using seaborn styles in matplotlib, use 'seaborn-v0_8' instead of 'seaborn' as the style name due to recent seaborn version changes
 - Use 'gpt-4o' as the model name for OpenAI's GPT-4 with vision capabilities
 - When searching for recent news, use the current year (2025) instead of previous years, or simply use the "recent" keyword to get the latest information
+- Anthropic 的 web_search server tool：搜索轮次和模型中间输出共用同一份 `max_tokens` 预算。
+  给 4000 时模型跑完 10 次搜索就把预算耗光，`stop_reason=max_tokens` 且正文一个字都没有。
+  带搜索的调用至少给 12000，并在 prompt 里要求"搜索过程中不要输出解说文字"。
+- 带 web search 的回答会把 `<cite index="3-4">…</cite>` 标签和英文原文直接写进 JSON 字符串，
+  prompt 要显式禁止，代码侧还要正则剥一层兜底（见 `invest/sector_moves.py::_clean_reason`）。
+- 东方财富 push2 行情接口固定 302 到 push2delay（延迟 15 分钟），加什么 header 都一样；
+  盘后跑不受影响，盘中取数要知道拿到的是 15 分钟前的快照。
 
 # Scratchpad
 
@@ -120,4 +127,5 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 [X] 投资日报入口与配置
 [X] 持仓/财报新闻抓取与 7 天去重
 [X] Gmail 发送与 invest_daily workflow
+[X] 当日板块复盘（invest/sector_moves.py）：A股/美股各取涨跌前五，Claude web search 归因
 [ ] 后续：财报日历、Form 4、指标阈值、IPO 雷达等

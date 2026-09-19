@@ -77,7 +77,7 @@ watchlist 分两类标的：
 
 ---
 
-## 数据源（8 个）
+## 数据源（9 个）
 
 | 模块 | 抓什么 | 工具 | 在哪跑 | 特殊要求 |
 |---|---|---|---|---|
@@ -89,6 +89,7 @@ watchlist 分两类标的：
 | `invest/youtube.py` | YouTube 财经 UP 主视频总结 | RSS / channel HTML + 字幕 + Gemini fallback | CI + 本地 | `GOOGLE_API_KEY`（字幕禁的视频用 Gemini 读视频） |
 | `invest/sec_13f.py` | 机构 13F-HR 季度持仓变动 diff | SEC EDGAR | CI + 本地 | — |
 | `invest/ic_basis.py` | IC 中证500股指期货当月/次月/当季/下季年化贴水 | 新浪行情 HTTP | CI + 本地 | — |
+| `invest/sector_moves.py` | A股/美股当日板块涨跌前五后五 + 检索归因 | 东方财富 + 新浪 + yfinance + Claude web search | CI + 本地 | `ANTHROPIC_API_KEY`（只归因需要，缺了就只出涨跌表） |
 
 **为什么雪球只在本地跑**：雪球用 Aliyun WAF JS 挑战，纯 HTTP 客户端绕不过去，必须真浏览器执行 JS。CI runner 上没有持久化的浏览器登录态，所以雪球只在本地 launchd 跑。
 
@@ -298,6 +299,15 @@ CI workflow 在 `.github/workflows/invest_daily.yml`，每天自动 commit 更�
 🏦 大资金动向 / 13F-HR（97 项，含 9 项科技/AI）
   Berkshire / Tiger Global / Coatue ...
 
+🔥 当日板块复盘                                ← 涨跌两端各 5 个 + 当日原因
+  A股 2026-09-18 收盘 · 上证 +0.94% 深证 +1.72% 创业板 +2.25%
+    主线：英伟达 CEO 及华为芯片利好引爆半导体全产业链，银行/化肥/种业遭资金分流
+    📈 半导体设备 +4.83%  [消息明确] 光刻胶 JSR/东京应化 10 月起提价 15%-22%，叠加…
+    📉 氮肥       -0.99%  [消息明确] 国内尿素现货报价继续下调，产能利用率仍处高位…
+  美股 2026-09-18 收盘 · 标普 -0.12% 纳指100 +0.63% 道指 -0.48%
+    📈 半导体(SMH) +2.21% [消息明确] 美债收益率企稳后芯片股延续反弹，AMAT +4%…
+    📉 铀与核电(URA) -2.41% [消息明确] Piper Sandler 评级分化引发抛售，OKLO/SMR 跌约 5%
+
 📉 IC 年化贴水（当月 -15.2% / 次月 -11.6% / 当季 -10.9% / 下季 -10.2%）
 💱 纳指 ETF 溢价（159632 +2.88%）
 
@@ -322,6 +332,7 @@ invest-monitor/
 │   ├── form4.py                 # SEC Form 4 高管买卖
 │   ├── haoetf.py                # 纳指 ETF 溢价
 │   ├── ic_basis.py              # IC 股指期货年化贴水
+│   ├── sector_moves.py          # A股/美股板块涨跌榜 + web search 归因
 │   ├── xueqiu.py                # 雪球大V Playwright 抓取
 │   ├── youtube.py               # YouTube channel HTML + 字幕 + Gemini fallback
 │   ├── sec_13f.py               # SEC 13F-HR 机构持仓 + diff 引擎
@@ -404,6 +415,9 @@ institutional_filers:
 - `chrome_profile/` 含雪球登录态，**绝对不能上传 GitHub**（已 .gitignore）
 - `invest_history.json` 和 `sec_13f_snapshots/` 由 CI 自动 commit & push（跨运行的 dedup / diff baseline）
 - LLM 评分用单次批量调用 + streaming，max_tokens=32K；200+ 条数据时单次成本约 $0.10
+- 板块归因每天两次带 web search 的 Claude 调用（A股 + 美股各一次，各 ≤8 次搜索，
+  输入 10 万 token 量级），默认 Sonnet，单日成本约 $0.5–1。只想要涨跌表不要原因时设
+  `ENABLE_SECTOR_REASONS=0`；整节都不要设 `ENABLE_SECTOR_MOVES=0`
 - macOS 系统 Python 的 SSL 证书问题已在代码里自动 fallback 到 `certifi.where()`，无需手动 export
 
 ## License

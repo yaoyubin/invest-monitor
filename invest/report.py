@@ -6,11 +6,12 @@
   2. 今日 S/A 级事件（投资雷达核心）
   3. 候选标的 trigger 命中（如有）
   4. 持仓 thesis delta 表
-  5. IC 股指期货年化贴水
-  6. 纳斯达克 ETF 溢价
-  7. 按股票分组的原始信息（财报前瞻 / SA News / SA Analysis / Finnhub News / 高管买卖；空小节自动省略），置于最后
+  5. 当日板块复盘（A股/美股 涨跌前五 + 归因）
+  6. IC 股指期货年化贴水
+  7. 纳斯达克 ETF 溢价
+  8. 按股票分组的原始信息（财报前瞻 / SA News / SA Analysis / Finnhub News / 高管买卖；空小节自动省略），置于最后
 
-经典模式（无 scorer_result）保持旧行为：仅输出标题 + IC 贴水 + ETF + 按股票分组（最后）。
+经典模式（无 scorer_result）保持旧行为：仅输出标题 + 板块复盘 + IC 贴水 + ETF + 按股票分组（最后）。
 """
 import datetime
 import re
@@ -54,6 +55,7 @@ def build_html(
     institutional_changes=None,
     ndq_etf_premiums=None,
     ic_basis=None,
+    sector_moves=None,
     symbol_order=None,
     symbol_to_name=None,
     scorer_result=None,
@@ -63,6 +65,7 @@ def build_html(
     earnings_forward / sa_news / sa_analysis / form4_list / xueqiu_posts / youtube_videos:
       若启用雷达评分，每项已 attach grade / why_important / thesis_impact / trigger_hit。
     ic_basis: invest.ic_basis.get_ic_basis() 的返回值；None 表示当日没抓到，小节省略
+    sector_moves: invest.sector_moves.get_sector_moves() 的返回值；None 表示当日没抓到，小节省略
     scorer_result: dict {scored_items, thesis_deltas, candidate_hits}；None 表示未启用雷达
     candidates: 候选 watchlist（用于在 trigger 命中区块展示标的中文名）
     """
@@ -102,6 +105,10 @@ def build_html(
         parts.append(_render_top_signals(all_items))
         parts.append(_render_candidate_hits(scorer_result.get("candidate_hits") or [], cand_name_map))
         parts.append(_render_thesis_deltas(scorer_result.get("thesis_deltas") or [], symbol_to_name))
+
+    # —— 当日板块涨跌复盘（看完个股信号后，用它把当天的市场主线补齐） ——
+    if sector_moves:
+        parts.append(_render_sector_moves(sector_moves))
 
     # —— 高显眼度：财报日历 + 高管买卖（独立成区块，放在分组列表之前） ——
     parts.append(_render_earnings_calendar(earnings_forward or [], symbol_to_name))
@@ -455,6 +462,108 @@ def _render_candidate_hits(hits, name_map):
         parts.append(f"<li style='margin-bottom:12px'>{line}</li>")
     parts.append("</ul>")
     return "\n".join(parts)
+
+
+CONFIDENCE_BADGE = {
+    "high": ("#16a34a", "消息明确"),
+    "medium": ("#d97706", "间接推断"),
+    "low": ("#999", "无明确消息"),
+}
+
+
+def _render_sector_moves(sector_moves):
+    """A股 / 美股当日板块涨跌前五后五 + LLM 归因。"""
+    markets = [m for m in (sector_moves.get("cn"), sector_moves.get("us")) if m]
+    if not markets:
+        return ""
+
+    parts = ["<hr style='margin:1.5em 0; border:none; border-top:1px solid #ccc' />",
+             "<h3 style='margin-top:0'>🔥 当日板块复盘</h3>"]
+    for m in markets:
+        parts.append(_render_one_market_sectors(m))
+    parts.append(
+        "<p style='margin:6px 0 0;color:#888;font-size:0.85em'>"
+        "只列两端：涨跌最猛的板块通常有明确消息面，中间的多是随机波动。"
+        "原因由 LLM 检索当日新闻后归纳，标「无明确消息」的即没查到对应新闻，不要当结论用。</p>"
+    )
+    return "\n".join(parts)
+
+
+def _render_one_market_sectors(m):
+    idx_line = " · ".join(
+        f"{_escape(i['name'])} <b style='color:{'#c00' if i['pct'] >= 0 else '#16a34a'}'>{i['pct']:+.2f}%</b>"
+        for i in (m.get("indexes") or [])
+    )
+    parts = [
+        f"<p style='margin:14px 0 2px'><b>{_escape(m.get('market', ''))}</b>"
+        f" <span style='color:#888;font-size:0.85em'>{_escape(m.get('as_of', ''))} 收盘 · "
+        f"{_escape(m.get('source', ''))}</span></p>"
+    ]
+    if idx_line:
+        parts.append(f"<p style='margin:0 0 6px;color:#444;font-size:0.92em'>{idx_line}</p>")
+    if m.get("summary"):
+        parts.append(
+            f"<p style='margin:0 0 8px;padding:6px 10px;background:#f5f5f5;border-left:3px solid #999;"
+            f"color:#333;font-size:0.92em'>主线：{_escape(m['summary'])}</p>"
+        )
+
+    td = "padding:5px 10px;border-bottom:1px solid #eee;vertical-align:top"
+    parts.append("<table style='border-collapse:collapse;font-size:0.95em;width:100%'>")
+    for rows, label in ((m.get("gainers") or [], "📈 涨幅前列"), (m.get("losers") or [], "📉 跌幅前列")):
+        parts.append(
+            f"<tr><td colspan='3' style='padding:8px 10px 3px;font-weight:bold;color:#555'>{label}</td></tr>"
+        )
+        if not rows:
+            parts.append(
+                f"<tr><td colspan='3' style='{td};color:#888'>今日该方向无板块（全市场同向波动）</td></tr>"
+            )
+            continue
+        for r in rows:
+            parts.append(_render_sector_row(r, td))
+    parts.append("</table>")
+    return "\n".join(parts)
+
+
+def _render_sector_row(r, td):
+    """一个板块：主行（名称/涨跌幅/附注）+ 归因子行（有原因时才出）。"""
+    pct = r.get("pct", 0)
+    # A股口径：涨红跌绿
+    color = "#c00" if pct >= 0 else "#16a34a"
+    name = _escape(r.get("name", ""))
+    url = r.get("url") or ""
+    name_html = f"<a href='{_escape(url)}' style='color:#111'>{name}</a>" if url else name
+    if r.get("category"):  # 美股：ETF 代码 + 板块/主题
+        note = f"{_escape(r.get('code', ''))} · {_escape(r['category'])}"
+    else:                  # A股：领涨/领跌股 + 板块总市值
+        lead_name = r.get("leader") if pct >= 0 else r.get("laggard")
+        lead_pct = r.get("leader_pct") if pct >= 0 else r.get("laggard_pct")
+        lead_label = "领涨" if pct >= 0 else "领跌"
+        note = f"{lead_label} {_escape(lead_name or '—')}"
+        if isinstance(lead_pct, (int, float)):
+            note += f" {lead_pct:+.2f}%"
+        if r.get("cap_yi"):
+            note += f" · 市值 {r['cap_yi']:,} 亿"
+
+    out = [
+        "<tr>"
+        f"<td style='{td};width:38%'>{name_html}</td>"
+        f"<td style='{td};text-align:right;width:14%;color:{color};font-weight:bold'>{pct:+.2f}%</td>"
+        f"<td style='{td};color:#888;font-size:0.9em'>{note}</td>"
+        "</tr>"
+    ]
+    reason = (r.get("reason") or "").strip()
+    if reason:
+        badge_color, badge_text = CONFIDENCE_BADGE.get(r.get("confidence"), ("#999", ""))
+        badge = (
+            f"<span style='display:inline-block;padding:0 5px;margin-right:6px;border-radius:3px;"
+            f"background:{badge_color};color:#fff;font-size:0.75em'>{badge_text}</span>"
+            if badge_text else ""
+        )
+        out.append(
+            f"<tr><td colspan='3' style='padding:0 10px 8px;border-bottom:1px solid #eee;"
+            f"color:#444;font-size:0.9em'>{badge}{_escape(reason)}</td></tr>"
+        )
+    return "\n".join(out)
 
 
 def _render_ic_basis(ic_basis):

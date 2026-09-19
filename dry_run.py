@@ -44,6 +44,7 @@ from invest.ic_basis import get_ic_basis
 from invest.report import build_html
 from invest.sa_rss import fetch_seeking_alpha
 from invest.scorer import attach_grades, score_items
+from invest.sector_moves import get_sector_moves
 
 
 def _earnings_forward_id(item):
@@ -68,6 +69,8 @@ def main():
                     help="启用 SEC 13F-HR 机构持仓监控")
     ap.add_argument("--include-sa", action="store_true",
                     help="启用 Seeking Alpha News/Analysis 抓取（日报默认已关闭，与 ENABLE_SA_RSS 对应）")
+    ap.add_argument("--include-sectors", action="store_true",
+                    help="启用当日板块复盘（A股/美股 涨跌前五）；归因只在 --use-llm 时才跑")
     args = ap.parse_args()
 
     if not args.use_llm:
@@ -183,12 +186,21 @@ def main():
         print(f"⚠️ IC 基差抓取失败: {e}")
         ic_basis = None
 
+    sector_moves = None
+    if args.include_sectors:
+        try:
+            sector_moves = get_sector_moves(with_reasons=args.use_llm)
+        except Exception as e:
+            print(f"⚠️ 板块复盘失败: {e}")
+            sector_moves = None
+
     print(
         f"抓取结果：earnings={len(earnings_forward)}, sa_news={len(sa_news)}, "
         f"sa_analysis={len(sa_analysis)}, form4={len(form4_list)}, "
         f"xueqiu={len(xueqiu_posts)}, youtube={len(youtube_videos)}, "
         f"13f={len(institutional_changes)}, etf={len(ndq_etf_premiums)}, "
-        f"ic={len(ic_basis['contracts']) if ic_basis else 0}"
+        f"ic={len(ic_basis['contracts']) if ic_basis else 0}, "
+        f"板块={sum(len(m.get('gainers') or []) + len(m.get('losers') or []) for m in sector_moves.values() if m) if sector_moves else 0}"
     )
 
     # 评分顺序（信号密度从高到低，--limit 切掉时损失最小）：
@@ -262,6 +274,7 @@ def main():
         institutional_changes=institutional_changes,
         ndq_etf_premiums=ndq_etf_premiums,
         ic_basis=ic_basis,
+        sector_moves=sector_moves,
         symbol_order=symbol_order,
         symbol_to_name=symbol_to_name,
         scorer_result=scorer_result,

@@ -68,6 +68,7 @@ from invest.haoetf import get_ndq_etf_premiums
 from invest.ic_basis import get_ic_basis
 from invest.report import build_html
 from invest.sa_rss import fetch_seeking_alpha
+from invest.sector_moves import get_sector_moves
 from invest.scorer import attach_grades, score_items
 from tools.email_sender import send_gmail
 
@@ -83,6 +84,10 @@ YOUTUBE_DAYS_BACK = int(os.getenv("YOUTUBE_DAYS_BACK", "2"))
 ENABLE_13F = os.getenv("ENABLE_13F", "1").lower() in ("1", "true", "yes")
 # Seeking Alpha News/Analysis 默认关闭（条数多导致日报过长；个股新闻由 Finnhub 覆盖）
 ENABLE_SA_RSS = os.getenv("ENABLE_SA_RSS", "0").lower() in ("1", "true", "yes")
+# 当日板块涨跌复盘（A股/美股 各 5 涨 5 跌 + LLM 检索归因）默认开启
+ENABLE_SECTOR_MOVES = os.getenv("ENABLE_SECTOR_MOVES", "1").lower() in ("1", "true", "yes")
+# 归因要联网搜索、每天多花几毛钱；只想要涨跌表时把它关掉即可
+ENABLE_SECTOR_REASONS = os.getenv("ENABLE_SECTOR_REASONS", "1").lower() in ("1", "true", "yes")
 # 设了就把 HTML 写到该目录（按日期命名）作为本地备份，同时也发 Gmail。
 # 本地 launchd 跑用此模式；CI 不设此变量，只发邮件不落盘
 RADAR_LOCAL_OUTPUT_DIR = os.getenv("RADAR_LOCAL_OUTPUT_DIR")
@@ -212,6 +217,15 @@ def main():
             f"{c['label']} {c['code']} {c['annual_pct']:+.2f}%" for c in ic_basis["contracts"]
         ))
 
+    # 当日板块涨跌复盘（A股 + 美股）
+    sector_moves = None
+    if ENABLE_SECTOR_MOVES:
+        try:
+            sector_moves = get_sector_moves(with_reasons=ENABLE_SECTOR_REASONS)
+        except Exception as e:
+            print(f"⚠️ 板块复盘失败（不影响其他数据源）: {e}")
+            sector_moves = None
+
     # —— 投资雷达评分 ——
     # 顺序：13F 机构 → 财报前瞻 → 高管 → YouTube → 雪球 → SA Analysis → SA News
     all_items_for_scoring = []
@@ -268,6 +282,7 @@ def main():
         institutional_changes=institutional_changes,
         ndq_etf_premiums=ndq_etf_premiums,
         ic_basis=ic_basis,
+        sector_moves=sector_moves,
         symbol_order=symbol_order,
         symbol_to_name=symbol_to_name,
         scorer_result=scorer_result,
@@ -288,6 +303,12 @@ def main():
     )
     if ic_basis and ic_basis["contracts"]:
         summary += f" / IC当月年化 {ic_basis['contracts'][0]['annual_pct']:+.2f}%"
+    if sector_moves:
+        n = sum(
+            len(m.get("gainers") or []) + len(m.get("losers") or [])
+            for m in sector_moves.values() if m
+        )
+        summary += f" / 板块复盘 {n} 个"
 
     if RADAR_LOCAL_OUTPUT_DIR:
         # 本地模式：写 HTML 到磁盘作为备份，再发一份到 Gmail
