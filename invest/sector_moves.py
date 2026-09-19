@@ -23,12 +23,17 @@ import json
 import os
 import re
 import sys
+import time
 
 import requests
 
 # —— A股：东方财富行业板块 ——
-# push2 会 302 到 push2delay，requests 默认跟随，这里不特意处理
-EM_CLIST_URL = "https://push2.eastmoney.com/api/qt/clist/get"
+# push2 只是个会 302 到 push2delay 的前置机，所以直接打终点域名。
+# 2026-09-19 实测 push2 整机 502 而 push2delay 正常，跟着跳转反而白白多一个故障点；
+# 反过来 push2delay 挂掉时 push2 可能还活着，所以两个都留着轮。
+EM_CLIST_HOSTS = ["push2delay.eastmoney.com", "push2.eastmoney.com"]
+EM_CLIST_PATH = "/api/qt/clist/get"
+EM_ATTEMPTS_PER_HOST = 2
 EM_BOARD_FS = "m:90+t:2+f:!50"  # m:90=板块, t:2=行业板块
 EM_FIELDS = "f2,f3,f8,f12,f14,f20,f104,f105,f128,f136,f207,f222"
 EM_HEADERS = {
@@ -185,15 +190,29 @@ def _fetch_cn_indexes():
 
 
 def _fetch_cn_board_page(sort_desc):
-    """取行业板块排行的一页（100 条）。sort_desc=True 取涨幅榜，False 取跌幅榜。"""
+    """
+    取行业板块排行的一页（100 条）。sort_desc=True 取涨幅榜，False 取跌幅榜。
+    多主机 × 多次重试，全都失败才抛最后一个异常。
+    """
     params = {
         "pn": 1, "pz": 100, "po": 1 if sort_desc else 0, "np": 1,
         "fltt": 2, "invt": 2, "fid": "f3", "fs": EM_BOARD_FS, "fields": EM_FIELDS,
     }
-    resp = requests.get(EM_CLIST_URL, params=params, headers=EM_HEADERS, timeout=20)
-    resp.raise_for_status()
-    data = (resp.json() or {}).get("data") or {}
-    return data.get("diff") or []
+    last_err = None
+    for host in EM_CLIST_HOSTS:
+        for attempt in range(1, EM_ATTEMPTS_PER_HOST + 1):
+            try:
+                resp = requests.get(
+                    f"https://{host}{EM_CLIST_PATH}", params=params, headers=EM_HEADERS, timeout=20
+                )
+                resp.raise_for_status()
+                data = (resp.json() or {}).get("data") or {}
+                return data.get("diff") or []
+            except Exception as e:
+                last_err = e
+                print(f"[sector_moves] {host} 第 {attempt} 次请求失败: {e}")
+                time.sleep(1.5 * attempt)
+    raise last_err
 
 
 def _cn_board_row(raw):
@@ -227,15 +246,21 @@ def _keep_cn_board(row):
 
 
 def fetch_cn_sectors(top_n=5):
-    """A股行业板块涨幅前 N / 跌幅前 N。抓取失败返回 None（日报里整个小节省略）。"""
-    try:
-        gain_raw = _fetch_cn_board_page(sort_desc=True)
-        lose_raw = _fetch_cn_board_page(sort_desc=False)
-    except Exception as e:
-        print(f"[sector_moves] 东方财富板块抓取失败: {e}")
-        return None
+    """
+    A股行业板块涨幅前 N / 跌幅前 N。两张榜单独抓、单独容错：
+    只挂了一边就出另一边（failed 里记下来，报告会说明缺的那半边是抓取失败而不是没有板块），
+    两边都挂才返回 None（日报里整个 A股 小节省略）。
+    """
+    raw, failed = {}, {}
+    for key, sort_desc in (("gainers", True), ("losers", False)):
+        try:
+            raw[key] = _fetch_cn_board_page(sort_desc=sort_desc)
+        except Exception as e:
+            print(f"[sector_moves] 东方财富{'涨' if sort_desc else '跌'}幅榜抓取失败: {e}")
+            raw[key], failed[key] = [], True
+    gain_raw, lose_raw = raw["gainers"], raw["losers"]
     if not gain_raw and not lose_raw:
-        print("[sector_moves] 东方财富板块返回空")
+        print("[sector_moves] 东方财富板块两张榜都没取到")
         return None
 
     def pick(raw_list, want_up):
@@ -253,6 +278,7 @@ def fetch_cn_sectors(top_n=5):
         "indexes": indexes,
         "gainers": pick(gain_raw, True),
         "losers": pick(lose_raw, False),
+        "failed": failed,
     }
 
 

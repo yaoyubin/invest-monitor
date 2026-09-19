@@ -508,15 +508,18 @@ def _render_one_market_sectors(m):
         )
 
     td = "padding:5px 10px;border-bottom:1px solid #eee;vertical-align:top"
+    failed = m.get("failed") or {}
     parts.append("<table style='border-collapse:collapse;font-size:0.95em;width:100%'>")
-    for rows, label in ((m.get("gainers") or [], "📈 涨幅前列"), (m.get("losers") or [], "📉 跌幅前列")):
+    for key, label in (("gainers", "📈 涨幅前列"), ("losers", "📉 跌幅前列")):
+        rows = m.get(key) or []
         parts.append(
             f"<tr><td colspan='3' style='padding:8px 10px 3px;font-weight:bold;color:#555'>{label}</td></tr>"
         )
         if not rows:
-            parts.append(
-                f"<tr><td colspan='3' style='{td};color:#888'>今日该方向无板块（全市场同向波动）</td></tr>"
-            )
+            # 区分"数据源挂了"和"今天真没有这个方向的板块"，否则普涨日和故障日长得一样
+            msg = ("数据源本次抓取失败，缺这半边" if failed.get(key)
+                   else "今日该方向无板块（全市场同向波动）")
+            parts.append(f"<tr><td colspan='3' style='{td};color:#888'>{msg}</td></tr>")
             continue
         for r in rows:
             parts.append(_render_sector_row(r, td))
