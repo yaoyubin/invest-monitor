@@ -100,9 +100,9 @@ US_INDEXES = [("SPY", "标普500"), ("QQQ", "纳指100"), ("DIA", "道指"), ("I
 
 # —— 归因 LLM ——
 # 只有 anthropic 有 web_search server tool，所以这里不跟随 SCORER_LLM_PROVIDER。
-# 默认用 Sonnet 而非 scorer 的 Opus：这活儿是"搜到什么讲什么"的归纳，不需要顶配模型，
-# 而且两个市场每天各跑一轮搜索（输入 10 万 token 量级），模型贵一档每天成本差好几倍。
-SECTOR_LLM_MODEL = os.getenv("SECTOR_LLM_MODEL", "claude-sonnet-5")
+# 默认和 scorer 统一用 Opus 5.5。注意两个市场每天各跑一轮搜索（输入 10 万 token 量级），
+# 嫌贵可以设 SECTOR_LLM_MODEL=claude-sonnet-5 降一档。
+SECTOR_LLM_MODEL = os.getenv("SECTOR_LLM_MODEL", "claude-opus-5-5")
 SECTOR_LLM_TIMEOUT = int(os.getenv("SECTOR_LLM_TIMEOUT", "420"))
 SECTOR_MAX_SEARCHES = int(os.getenv("SECTOR_MAX_SEARCHES", "8"))
 # max_tokens 要给足：server tool 的搜索轮次和模型的中间输出都计入同一份 output 预算，
@@ -453,6 +453,8 @@ def _call_anthropic_with_search(prompt, max_searches):
         model=SECTOR_LLM_MODEL,
         max_tokens=SECTOR_MAX_TOKENS,
         system=REASON_SYSTEM_PROMPT,
+        # Opus 5.5 默认 effort 是 medium，显式设 high 与之前 Opus 5 的默认行为一致
+        output_config={"effort": "high"},
         tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": max_searches}],
         messages=[{"role": "user", "content": prompt}],
     )

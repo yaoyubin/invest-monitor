@@ -145,7 +145,7 @@ cp .env.example .env       # 编辑填入下面这些 key
 
 ```
 SCORER_LLM_PROVIDER=anthropic
-SCORER_LLM_MODEL=claude-sonnet-4-6
+SCORER_LLM_MODEL=claude-opus-5-5
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
@@ -234,7 +234,7 @@ snapshot 落到 `sec_13f_snapshots/`，由 CI 自动 commit 跨运行保留。
 仓库 **Settings → Secrets and variables → Actions** 加：
 
 - `GMAIL_SENDER` / `GMAIL_APP_PASSWORD` / `GMAIL_RECIPIENT`
-- `ANTHROPIC_API_KEY` + `SCORER_LLM_PROVIDER=anthropic` + `SCORER_LLM_MODEL=claude-sonnet-4-6`
+- `ANTHROPIC_API_KEY` + `SCORER_LLM_PROVIDER=anthropic` + `SCORER_LLM_MODEL=claude-opus-5-5`
 - `GOOGLE_API_KEY`（YouTube Gemini fallback）
 - `FINNHUB_API_KEY`（可选）
 

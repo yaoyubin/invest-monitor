@@ -225,6 +225,8 @@ def query_llm(prompt: str, client=None, model=None, provider="openai", image_pat
                 model=model,
                 max_tokens=32768,
                 thinking={"type": "adaptive"},
+                # Opus 5.5 默认 effort 是 medium（Opus 5 是 high），显式拉回 high 保持评分质量
+                output_config={"effort": "high"},
                 messages=messages,
             ) as stream:
                 for text in stream.text_stream:
